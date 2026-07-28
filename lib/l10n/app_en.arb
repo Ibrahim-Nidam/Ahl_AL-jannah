@@ -1,0 +1,477 @@
+{
+  "@@locale": "en",
+  "navQuran": "Quran",
+  "navPrayer": "Prayer",
+  "navQibla": "Qibla",
+  "navAdhkar": "Adhkar",
+  "moreTabTitle": "More",
+  "@moreTabTitle": {
+    "description": "Title of the More tab / page."
+  },
+  "hadithTileTitle": "Prophetic Hadith",
+  "hadithTileSubtitle": "Sahih Bukhari & Muslim",
+  "settingsTileTitle": "Settings",
+  "settingsTileSubtitle": "Theme, font size, and notifications",
+  "aboutTileTitle": "About the App",
+  "aboutTileSubtitle": "About Ahl Jannah",
+  "basmala": "بسم الله الرحمن الرحيم",
+  "@basmala": {
+    "description": "Fixed Quranic-Arabic phrase. Intentionally identical across all locales and always rendered right-to-left, regardless of app language."
+  },
+  "settingsPageTitle": "Settings",
+  "languageSectionTitle": "Language",
+  "languageSectionDescription": "Choose your preferred language. Arabic displays right-to-left automatically.",
+  "languageSystemOption": "System Default",
+  "appearanceSectionTitle": "Appearance",
+  "appearanceSectionDescription": "Choose how Ahl Jannah looks across the whole app.",
+  "themePreviewTitle": "Preview",
+  "themeModeSectionTitle": "Theme",
+  "themeModeSystemOption": "System Default",
+  "themeModeLightOption": "Light",
+  "themeModeDarkOption": "Dark",
+  "colorPaletteSectionTitle": "Color Palette",
+  "colorPaletteSectionDescription": "Pick the color theme used throughout the app.",
+  "paletteClassicName": "Emerald",
+  "paletteOceanName": "Ocean",
+  "paletteDesertName": "Desert",
+  "quranFontSectionTitle": "Quran Font",
+  "quranFontSectionDescription": "Choose the Arabic font used for Quran text.",
+  "quranFontUthmanicName": "Uthmanic (Lateef)",
+  "adhkarRemindersSectionTitle": "Adhkar Reminders",
+  "adhkarRemindersSectionDescription": "Get reminded to recite your morning and evening Adhkar.",
+  "morningAdhkarReminderOption": "Morning Adhkar Reminder",
+  "eveningAdhkarReminderOption": "Evening Adhkar Reminder",
+  "morningAdhkarNotificationTitle": "Morning Adhkar",
+  "morningAdhkarNotificationBody": "It is time to remember Allah with your morning Adhkar.",
+  "eveningAdhkarNotificationTitle": "Evening Adhkar",
+  "eveningAdhkarNotificationBody": "It is time to remember Allah with your evening Adhkar.",
+  "batteryOptimizationSectionTitle": "Battery Optimization",
+  "batteryOptimizationSectionDescription": "Disable battery optimization to ensure prayer notifications arrive on time.",
+  "batteryOptimizationDisableOption": "Disable Battery Optimization",
+  "morePageMessage": "Peace and blessings be upon the best of Allah's creation, our Prophet Muhammad bin Abdullah, and upon his family and companions, one and all. To proceed:\n\nAll praise is due to Allah, much good and blessed praise therein. All praise is due to Allah for His apparent and hidden blessings, and all praise is due to Allah Who inspired me with this idea and guided me to complete it. I ask Him, glorified and exalted, to make this work a continuous charity, whose reward is not limited to me alone, but extends to everyone whom Allah has written to enter Paradise, from our father Adam, peace be upon him, until the Day of Resurrection, so that Allah may raise us by it, even by one degree, and our Lord, glorified and exalted, is more generous than that and more vast in bounty, and all praise is due to Allah, Lord of the Worlds.\n\nAnd the Messenger of Allah ﷺ said: \"Convey from me, even if it is only one verse.\"\n\nAnd I ask Allah Almighty to make this work sincere for His noble face, and to benefit Muslims by it, and to make it a cause for guidance and steadfastness, and to bless it, and accept it with good acceptance, and place it in the scale of good deeds on the Day of Resurrection. And all praise is due to Allah, Lord of the Worlds.",
+
+  "commonRetry": "Retry",
+  "commonError": "Error: {message}",
+  "@commonError": {
+    "placeholders": {
+      "message": { "type": "String" }
+    }
+  },
+  "commonCancel": "Not now",
+  "commonContinue": "Continue",
+  "commonStop": "Stop",
+  "commonCopy": "Copy",
+  "commonShare": "Share",
+  "commonToday": "Today",
+  "commonYesterday": "Yesterday",
+  "commonTomorrow": "Tomorrow",
+  "commonSettings": "Settings",
+  "commonRefreshLocation": "Refresh Location",
+  "commonClear": "Clear",
+
+  "startupPermissionsTitle": "Enable prayer and Qibla permissions",
+  "startupPermissionsBody": "Ahl Jannah needs notification permission for prayer reminders and location permission for prayer times and Qibla direction. Exact alarm permission helps deliver prayer alerts on time.",
+  "startupBatteryOptimizationBody": "To ensure Adhan notifications arrive on time, please disable battery optimization for Ahl Jannah. You will be taken to the system settings to allow unrestricted background access.",
+
+  "quranTabSurah": "Surah",
+  "quranTabJuz": "Juz",
+  "quranTabSearch": "Search",
+  "quranContinueReading": "Continue Reading",
+  "quranBookmarksTooltip": "Bookmarks",
+  "quranBookmarksTitle": "Quran Bookmarks",
+  "quranBookmarksPages": "Pages",
+  "quranBookmarksAyahs": "Ayahs",
+  "quranNoBookmarksYet": "No bookmarks saved yet",
+  "quranNoPageBookmarks": "No page bookmarks yet",
+  "quranNoAyahBookmarks": "No ayah bookmarks yet",
+  "quranSavedVersesCount": "{count} saved verses",
+  "@quranSavedVersesCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "quranPageLabel": "Page {page}",
+  "@quranPageLabel": {
+    "placeholders": {
+      "page": { "type": "int" }
+    }
+  },
+  "quranJuzLabel": "Juz {juz}",
+  "@quranJuzLabel": {
+    "placeholders": {
+      "juz": { "type": "int" }
+    }
+  },
+  "quranHizbLabel": "Hizb {hizb}",
+  "@quranHizbLabel": {
+    "placeholders": {
+      "hizb": { "type": "int" }
+    }
+  },
+  "quranJuzPageSubtitle": "Juz {juz} • Page {page}",
+  "@quranJuzPageSubtitle": {
+    "placeholders": {
+      "juz": { "type": "int" },
+      "page": { "type": "int" }
+    }
+  },
+  "quranFailedToLoad": "Failed to load Quran: {message}",
+  "@quranFailedToLoad": {
+    "placeholders": {
+      "message": { "type": "String" }
+    }
+  },
+  "quranFilterSurahsHint": "Filter surahs…",
+  "quranSearchHint": "Search the Quran…",
+  "quranSearchPrompt": "Type a word to search the Quran",
+  "quranNoResults": "No results found",
+  "quranFoundResults": "Found {count} results for \"{query}\"",
+  "@quranFoundResults": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "query": { "type": "String" }
+    }
+  },
+  "quranNoVersesOnPage": "No verses on this page",
+  "quranSettingsAppearance": "Settings & Appearance",
+  "quranReadingMode": "Reading Mode",
+  "quranModeMushaf": "Mushaf",
+  "quranModeStudy": "Study",
+  "quranArabicFontSize": "Arabic Font Size: {size} px",
+  "@quranArabicFontSize": {
+    "placeholders": {
+      "size": { "type": "int" }
+    }
+  },
+  "quranShowTranslations": "Show Translations",
+  "quranTranslationLanguage": "Translation Language",
+  "quranLangEnglish": "English",
+  "quranLangFrench": "French",
+  "quranSettingsTooltip": "Quran Settings",
+  "quranManageBookmarks": "Manage Bookmarks",
+  "quranBookmarkPage": "Bookmark page",
+  "quranUnmarkPage": "Unmark page",
+  "quranBookmarkVerse": "Bookmark Verse",
+  "quranUnmarkVerse": "Unmark Verse",
+  "quranClearSelection": "Clear Selection",
+  "quranPageBookmarked": "Page {page} bookmarked",
+  "@quranPageBookmarked": {
+    "placeholders": {
+      "page": { "type": "int" }
+    }
+  },
+  "quranPageRemovedBookmark": "Page {page} removed from bookmarks",
+  "@quranPageRemovedBookmark": {
+    "placeholders": {
+      "page": { "type": "int" }
+    }
+  },
+  "quranVerseBookmarked": "Verse {surah}:{ayah} bookmarked",
+  "@quranVerseBookmarked": {
+    "placeholders": {
+      "surah": { "type": "int" },
+      "ayah": { "type": "int" }
+    }
+  },
+  "quranVerseRemovedBookmark": "Verse {surah}:{ayah} removed from bookmarks",
+  "@quranVerseRemovedBookmark": {
+    "placeholders": {
+      "surah": { "type": "int" },
+      "ayah": { "type": "int" }
+    }
+  },
+  "quranVerseCopied": "Verse copied to clipboard",
+  "quranVerseShareReady": "Verse format ready to share (copied)",
+  "quranFailedBookmarkPage": "Failed to bookmark page: {message}",
+  "@quranFailedBookmarkPage": {
+    "placeholders": {
+      "message": { "type": "String" }
+    }
+  },
+  "quranFailedRemoveBookmark": "Failed to remove bookmark: {message}",
+  "@quranFailedRemoveBookmark": {
+    "placeholders": {
+      "message": { "type": "String" }
+    }
+  },
+  "quranFailedBookmarkVerse": "Failed to bookmark verse: {message}",
+  "@quranFailedBookmarkVerse": {
+    "placeholders": {
+      "message": { "type": "String" }
+    }
+  },
+  "quranVerseLabel": "Verse {surah}:{ayah}",
+  "@quranVerseLabel": {
+    "placeholders": {
+      "surah": { "type": "int" },
+      "ayah": { "type": "int" }
+    }
+  },
+  "quranAyahBookmarkLabel": "Ayah {surah}:{ayah}",
+  "@quranAyahBookmarkLabel": {
+    "placeholders": {
+      "surah": { "type": "int" },
+      "ayah": { "type": "int" }
+    }
+  },
+  "quranPageDotSurah": "Page {page} • {surah}",
+  "@quranPageDotSurah": {
+    "placeholders": {
+      "page": { "type": "int" },
+      "surah": { "type": "String" }
+    }
+  },
+  "quranAyahCount": "• {count} Ayahs",
+  "@quranAyahCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "quranSurahFallback": "Surah {id}",
+  "@quranSurahFallback": {
+    "placeholders": {
+      "id": { "type": "int" }
+    }
+  },
+  "quranShareQuoteTitle": "Quran Quote",
+  "quranShareViaApp": "Shared via Ahl Jannah App",
+  "quranRevelationMeccan": "Meccan",
+  "quranRevelationMedinan": "Medinan",
+
+  "prayerPageTitle": "Prayer Times",
+  "prayerSettingsTitle": "Prayer Settings",
+  "prayerEnableNotifications": "Enable Notifications",
+  "prayerEnableNotificationsSubtitle": "Receive adhan alerts and reminders",
+  "prayerReminderBefore": "Reminder Before Prayer",
+  "prayerReminder5Min": "5 min",
+  "prayerReminder15Min": "15 min",
+  "prayerAdhanSound": "Adhan Sound",
+  "prayerFullAdhan": "Full Adhan",
+  "prayerShortAdhan": "Short Adhan",
+  "prayerMadhab": "Madhab (Asr)",
+  "prayerMadhabStandard": "Standard (Shafi/Maliki/Hanbali)",
+  "prayerMadhabHanafi": "Hanafi",
+  "prayerCalculationMethod": "Calculation Method",
+  "prayerNextPrayer": "NEXT PRAYER",
+  "prayerTodaysPrayers": "Today's Prayers",
+  "prayerTimesHeading": "Prayer Times",
+  "prayerAdhanPlaying": "Adhan is playing...",
+  "prayerGpsLocation": "GPS Location",
+  "prayerMuteAdhan": "Mute adhan",
+  "prayerUnmuteAdhan": "Unmute adhan",
+  "prayerPreviousDay": "Previous day",
+  "prayerNextDay": "Next day",
+  "prayerFailedLoad": "Failed to load prayer times",
+  "prayerLocationTimesError": "Location/Times Error",
+  "prayerNameFajr": "Fajr",
+  "prayerNameSunrise": "Sunrise",
+  "prayerNameDhuhr": "Dhuhr",
+  "prayerNameAsr": "Asr",
+  "prayerNameMaghrib": "Maghrib",
+  "prayerNameIsha": "Isha",
+  "prayerNotificationChannelName": "Prayer Reminders",
+  "prayerReminderChannelDescription": "Reminder before prayer time",
+  "prayerAdhanChannelName": "Adhan Alerts",
+  "prayerAdhanChannelDescription": "Adhan plays at prayer time",
+  "prayerAdhanPlayingChannelName": "Adhan Playing",
+  "prayerAdhanPlayingChannelDescription": "Shown while an Adhan is playing, with a Stop Adhan action",
+  "adhkarNotificationChannelName": "Adhkar Reminders",
+  "adhkarNotificationChannelDescription": "Reminders to recite morning and evening Adhkar",
+  "prayerCancelAdhan": "Cancel Adhan",
+  "prayerStopAdhan": "Stop Adhan",
+  "prayerAdhanNotificationTitle": "Adhan - {prayer}",
+  "@prayerAdhanNotificationTitle": {
+    "placeholders": {
+      "prayer": { "type": "String" }
+    }
+  },
+  "prayerAdhanNotificationBody": "It is time for {prayer} prayer",
+  "@prayerAdhanNotificationBody": {
+    "placeholders": {
+      "prayer": { "type": "String" }
+    }
+  },
+  "prayerReminderNotificationBody": "{prayer} in {minutes} minutes",
+  "@prayerReminderNotificationBody": {
+    "placeholders": {
+      "prayer": { "type": "String" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "prayerAdhanPlayingBody": "Adhan is playing",
+  "prayerFajrAdhanHint": "Fajr always uses its dedicated Adhan unless Short is selected.",
+  "prayerAutomaticMethod": "Automatic Method",
+  "prayerAutomaticMethodSubtitle": "Selects the optimal method for your region",
+  "prayerShowingTimesFor": "Showing prayer times for {location}",
+  "@prayerShowingTimesFor": {
+    "placeholders": {
+      "location": { "type": "String" }
+    }
+  },
+
+  "qiblaPageTitle": "Qibla",
+  "qiblaCompassUnavailable": "Compass Unavailable",
+  "qiblaDirectionLabel": "QIBLA DIRECTION",
+  "qiblaAligned": "ALIGNED WITH QIBLA",
+  "qiblaRotateDevice": "ROTATE DEVICE",
+  "qiblaDegreesFromNorth": "Degrees clockwise from North (for {location})",
+  "@qiblaDegreesFromNorth": {
+    "placeholders": {
+      "location": { "type": "String" }
+    }
+  },
+  "qiblaYourLocation": "your location",
+  "qiblaErrorLoading": "Error loading Qibla",
+  "qiblaCalibrateHint": "Move your phone in a figure-8 motion to calibrate the compass.",
+  "qiblaBearingLabel": "Qibla bearing: {degrees}°",
+  "@qiblaBearingLabel": {
+    "placeholders": {
+      "degrees": { "type": "String" }
+    }
+  },
+  "qiblaSensorUnavailableMessage": "Compass sensor is not available on this platform/device.",
+  "qiblaSensorNotEmittingMessage": "Compass sensor is not emitting readings. This happens on emulators or if sensors are disabled.",
+  "qiblaSensorNullReadingsMessage": "Compass sensor returned null readings. Calibration or device sensors might be disabled.",
+  "qiblaSensorReadErrorMessage": "Error reading compass sensor: {error}",
+  "@qiblaSensorReadErrorMessage": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "qiblaPermissionDeniedMessage": "Location permission is required to calculate Qibla direction.",
+  "qiblaLocationUnavailableMessage": "Unable to determine your location. Please try again.",
+  "qiblaFacingKaaba": "You are now facing the direction of the Kaaba.",
+  "qiblaAlignMarkerHint": "Align the gold marker at the top with the gold Kaaba pointer.",
+  "qiblaNorth": "N",
+  "qiblaEast": "E",
+  "qiblaSouth": "S",
+  "qiblaWest": "W",
+
+  "adhkarPageTitle": "Adhkar",
+  "adhkarCountInCategory": "{count} adhkar in this category",
+  "@adhkarCountInCategory": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "adhkarComingSoon": "Adhkar & counter coming soon",
+  "adhkarSearchHint": "Search Arabic, translation, or transliteration",
+  "adhkarNoResults": "No adhkar found",
+  "adhkarEmptyCategory": "No adhkar in this category",
+  "adhkarRepeatHint": "Repeat {count}×",
+  "@adhkarRepeatHint": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "adhkarReferenceLabel": "Reference",
+  "adhkarAuthenticityLabel": "Authenticity",
+  "adhkarNarratorLabel": "Narrator",
+  "adhkarBookLabel": "Book",
+  "adhkarHadithNumberLabel": "Hadith number",
+  "adhkarBenefitsLabel": "Benefits",
+  "adhkarResetCounter": "Reset",
+  "adhkarCatalogSubtitle": "{count} categories",
+  "@adhkarCatalogSubtitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "adhkarProgressLabel": "{current} of {total}",
+  "@adhkarProgressLabel": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "adhkarSwipeHint": "Swipe for next / previous",
+  "adhkarShowTranslation": "Show translation",
+  "adhkarHideTranslation": "Hide translation",
+  "adhkarShowTransliteration": "Show transliteration",
+  "adhkarHideTransliteration": "Hide transliteration",
+  "adhkarDailySection": "DAILY",
+  "adhkarAllCategoriesSection": "ALL CATEGORIES",
+  "hadithPageTitle": "Hadith",
+  "hadithComingSoon": "Hadith collection coming soon",
+
+  "tasbeehPageTitle": "Tasbeeh",
+  "tasbeehSettingsSectionTitle": "Tasbeeh",
+  "tasbeehSettingsSectionDescription": "Haptic feedback while counting on the digital Tasbeeh.",
+  "tasbeehVibrateOnTapOption": "Vibrate on every tap",
+  "tasbeehVibrateOnTapSubtitle": "Light vibration for each count.",
+  "tasbeehStrongVibrateOption": "Strong vibration on completion",
+  "tasbeehStrongVibrateSubtitle": "A stronger pulse when you reach the target.",
+  "tasbeehCompletionMessage": "Target completed — may Allah accept it. You can keep counting.",
+  "tasbeehContinueCounting": "Continue",
+  "tasbeehChooseDhikr": "Choose dhikr",
+  "tasbeehEmptyCounterLabel": "Empty counter — tap to count",
+  "tasbeehEmptyCounterOption": "Empty counter (no text)",
+  "tasbeehCustomDhikrOption": "Custom dhikr",
+  "tasbeehCustomDhikrHint": "Type your dhikr here",
+  "tasbeehCollectionSection": "My Tasbeeh collection",
+  "tasbeehCollectionEmpty": "No saved dhikr yet. Add one from the Adhkar catalog.",
+  "tasbeehCatalogSearchSection": "From Adhkar catalog",
+  "tasbeehAddToCollection": "Add to collection",
+  "tasbeehAddAndOpen": "Add to Tasbeeh",
+  "tasbeehResetSession": "Reset session",
+  "tasbeehTargetLabel": "Target: {count}",
+  "@tasbeehTargetLabel": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "tasbeehRemainingLabel": "Remaining: {count}",
+  "@tasbeehRemainingLabel": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "tasbeehUnlimitedLabel": "Unlimited",
+  "tasbeehElapsedLabel": "Time: {time}",
+  "@tasbeehElapsedLabel": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "tasbeehModeCustom": "Custom ({count})",
+  "@tasbeehModeCustom": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "tasbeehModeUnlimited": "∞",
+  "tasbeehCustomTargetTitle": "Custom target",
+  "tasbeehCustomTargetLabel": "Number of repetitions",
+  "tasbeehStatsTitle": "Statistics",
+  "tasbeehStatsDaily": "Today",
+  "tasbeehStatsLifetime": "Lifetime",
+  "tasbeehStatSessions": "Completed sessions: {count}",
+  "@tasbeehStatSessions": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "tasbeehStatRepetitions": "Total repetitions: {count}",
+  "@tasbeehStatRepetitions": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "tasbeehStatMinutes": "Time: {count}",
+  "@tasbeehStatMinutes": {
+    "placeholders": {
+      "count": { "type": "String" }
+    }
+  },
+  "tasbeehStatsToday": "Today",
+  "tasbeehStatsByDhikr": "By dhikr",
+  "tasbeehClearToday": "Clear today's stats",
+  "tasbeehClearAll": "Clear all stats",
+  "hadithSearchHint": "Search hadith...",
+  "hadithNoResults": "No hadith found.",
+  "hadithNoCollections": "No hadith collections found.",
+  "hadithCollectionCount": "{count, plural, one{{count} hadith} other{{count} hadiths}}",
+  "@hadithCollectionCount": { "placeholders": { "count": { "type": "int" } } },
+  "hadithNumberLabel": "No. {number}",
+  "@hadithNumberLabel": { "placeholders": { "number": { "type": "int" } } }
+}
