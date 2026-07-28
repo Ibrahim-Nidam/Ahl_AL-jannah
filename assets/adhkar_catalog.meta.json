@@ -1,0 +1,7 @@
+{
+  "name": "Hisnul Muslim (Fortress of the Muslim)",
+  "source": "https://github.com/sehalhussain/Hadith-Dua-assets",
+  "file": "duas-adhkar-hisnul-muslim.json",
+  "attribution": "Islamic assets prepared by Sehal Hussain for Kitably",
+  "notes": "Flattened into adhkar_catalog.json. Morning/Evening mapped for deep links. categoryAr/benefitsAr added for Arabic UI (legacy azkar-db match + offline EN->AR enrichment). The app has no live translation API; new catalog entries should include categoryAr and benefitsAr."
+}
