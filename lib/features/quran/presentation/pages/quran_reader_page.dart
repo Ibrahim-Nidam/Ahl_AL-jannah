@@ -861,7 +861,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     });
   }
 
-  void _onPortraitPageChanged(int index) {
+  void _onPortraitPageChanged(int index) async {
     final pageNum = index + 1;
     // Ignore attach-time notifications that would reset progress to page 1.
     if (!_portraitSettled) {
@@ -879,6 +879,20 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     });
     _canPersistPosition = true;
     unawaited(_saveLastPosition());
+
+    // Immediately fetch metadata for the new page to update header
+    try {
+      final ayahs = await _cubit.getAyahsByPage(pageNum);
+      if (ayahs.isNotEmpty && mounted) {
+        setState(() {
+          _activeSurahId = ayahs.first.surahId;
+          _activeJuz = ayahs.first.juz;
+          _activeHizb = ayahs.first.hizb;
+        });
+      }
+    } catch (e) {
+      debugPrint('[QuranReader] Failed to fetch metadata for page \$pageNum: \$e');
+    }
   }
 
   Widget _buildPortrait() {

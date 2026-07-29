@@ -4,7 +4,7 @@ abstract final class AppConstants {
   static const String appName = 'Ahl Jannah';
 
   /// Application package / organization.
-  static const String orgName = 'com.ahljannah';
+  static const String orgName = 'com.example.ahl_jannah';
 
   /// Kaaba coordinates (used for Qibla calculation).
   static const double kaabaLatitude = 21.3891;

@@ -65,7 +65,7 @@ class _StartupPermissionPromptState extends State<StartupPermissionPrompt> {
         false;
 
     if (!shouldRequest) {
-      await prefs.setBool(AppConstants.keyStartupPermissionsRequested, true);
+      // Don't set the flag - allow asking again on next app launch
       return;
     }
 
