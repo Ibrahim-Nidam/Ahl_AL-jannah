@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:android_intent_plus/android_intent.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'package:ahl_jannah/l10n/generated/app_localizations.dart';
 
@@ -11,7 +12,9 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/theme/app_palettes.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../prayer/data/repositories/prayer_notification_service.dart';
+import '../../../prayer/data/repositories/adhan_audio_player.dart';
 import '../../domain/entities/settings_entities.dart';
 import '../bloc/settings_cubit.dart';
 
@@ -269,6 +272,97 @@ class SettingsPage extends StatelessWidget {
                     .setTasbeehStrongVibrateOnComplete(enabled),
               ),
               const SizedBox(height: 8),
+
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Divider(height: 32),
+              ),
+
+              // ── Debug Tools ──
+              _SectionHeader(
+                title: 'Debug Tools',
+                description: 'Test adhan sound and view logs for troubleshooting',
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.volume_up_rounded),
+                title: const Text('Test Adhan Sound'),
+                subtitle: const Text('Play adhan to test audio playback'),
+                trailing: const Icon(Icons.play_arrow_rounded),
+                onTap: () async {
+                  try {
+                    final audioPlayer = getIt<AdhanAudioPlayer>();
+                    AppLogger.info('Manual adhan test triggered from settings');
+                    await audioPlayer.playAdhan('fajr', settings.adhanType);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Playing adhan...')),
+                      );
+                    }
+                  } catch (e) {
+                    AppLogger.error('Failed to play test adhan', error: e);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e')),
+                      );
+                    }
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.bug_report_rounded),
+                title: const Text('View Logs'),
+                subtitle: const Text('View recent app logs for debugging'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const _LogViewerPage(),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.share_rounded),
+                title: const Text('Share Logs'),
+                subtitle: const Text('Export and share logs for support'),
+                trailing: const Icon(Icons.ios_share),
+                onTap: () async {
+                  try {
+                    final logPath = await AppLogger.exportLogsToFile();
+                    if (logPath != null && context.mounted) {
+                      await Share.shareXFiles([XFile(logPath)], text: 'Ahl Jannah Debug Logs');
+                      AppLogger.info('Logs shared successfully');
+                    } else if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Failed to export logs')),
+                      );
+                    }
+                  } catch (e) {
+                    AppLogger.error('Failed to share logs', error: e);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e')),
+                      );
+                    }
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_rounded),
+                title: const Text('Clear Logs'),
+                subtitle: const Text('Clear all stored logs'),
+                trailing: const Icon(Icons.clear),
+                onTap: () async {
+                  await AppLogger.clearLogs();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Logs cleared')),
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
             ],
           );
         },
@@ -295,6 +389,94 @@ class SettingsPage extends StatelessWidget {
       case QuranFont.uthmanic:
         return l10n.quranFontUthmanicName;
     }
+  }
+}
+
+class _LogViewerPage extends StatefulWidget {
+  const _LogViewerPage();
+
+  @override
+  State<_LogViewerPage> createState() => _LogViewerPageState();
+}
+
+class _LogViewerPageState extends State<_LogViewerPage> {
+  final ScrollController _scrollController = ScrollController();
+  List<String> _logs = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLogs();
+  }
+
+  Future<void> _loadLogs() async {
+    final logs = AppLogger.getLogs();
+    setState(() {
+      _logs = logs;
+    });
+    // Scroll to bottom
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Debug Logs'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadLogs,
+          ),
+        ],
+      ),
+      body: _logs.isEmpty
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.inbox_rounded, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text('No logs available', style: TextStyle(color: Colors.grey)),
+                ],
+              ),
+            )
+          : ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(16),
+              itemCount: _logs.length,
+              itemBuilder: (context, index) {
+                final log = _logs[index];
+                // Color code based on log level
+                Color logColor = Colors.black87;
+                if (log.contains('[ERROR]')) {
+                  logColor = Colors.red;
+                } else if (log.contains('[WARNING]')) {
+                  logColor = Colors.orange;
+                } else if (log.contains('[INFO]')) {
+                  logColor = Colors.blue;
+                } else if (log.contains('[DEBUG]')) {
+                  logColor = Colors.grey;
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    log,
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      color: logColor,
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
   }
 }
 

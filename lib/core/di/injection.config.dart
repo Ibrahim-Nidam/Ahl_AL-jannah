@@ -29,6 +29,8 @@ import '../../features/hadith/domain/repositories/hadith_repository.dart'
     as _i1050;
 import '../../features/hadith/domain/usecases/hadith_usecases.dart' as _i664;
 import '../../features/hadith/presentation/bloc/hadith_cubit.dart' as _i354;
+import '../../features/prayer/data/repositories/adhan_audio_player.dart'
+    as _i386;
 import '../../features/prayer/data/repositories/prayer_notification_service.dart'
     as _i894;
 import '../../features/prayer/data/repositories/prayer_repository_impl.dart'
@@ -65,6 +67,7 @@ extension GetItInjectableX on _i174.GetIt {
     _i526.EnvironmentFilter? environmentFilter,
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
+    gh.singleton<_i386.AdhanAudioPlayer>(() => _i386.AdhanAudioPlayer());
     gh.singleton<_i894.PrayerNotificationService>(
       () => _i894.PrayerNotificationService(),
     );

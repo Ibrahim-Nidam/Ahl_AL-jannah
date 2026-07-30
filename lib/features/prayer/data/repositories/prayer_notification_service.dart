@@ -21,9 +21,11 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:injectable/injectable.dart';
 
 import '../../../../core/router/app_router.dart';
+import '../../../../core/di/injection.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../settings/domain/entities/settings_entities.dart';
 import '../../domain/entities/prayer_entities.dart';
+import 'adhan_audio_player.dart';
 
 /// Action identifiers used by the reminder / adhan notification buttons.
 const String _actionCancelAdhan = 'cancel_adhan';
@@ -481,6 +483,15 @@ class PrayerNotificationService {
     try {
       await _notificationsPlugin.cancel(PrayerNotificationIds.adhanId(activeKey));
       await _notificationsPlugin.cancel(PrayerNotificationIds.stopBannerId(activeKey));
+      
+      // Also stop the audio player if it's playing
+      try {
+        final audioPlayer = getIt<AdhanAudioPlayer>();
+        await audioPlayer.stopAdhan();
+      } catch (e) {
+        debugPrint('Failed to stop audio player: $e');
+      }
+      
       debugPrint('Stopped active adhan for $activeKey');
     } catch (e) {
       debugPrint('Failed to stop active adhan: $e');

@@ -56,6 +56,7 @@ dependencies:
   flutter_screenutil: ^5.9.0
   google_fonts: ^6.1.0
   audioplayers: ^6.8.1
+  share_plus: ^7.2.0
 
   # Quran reader: keep the screen awake while reading
   wakelock_plus: ^1.2.8
