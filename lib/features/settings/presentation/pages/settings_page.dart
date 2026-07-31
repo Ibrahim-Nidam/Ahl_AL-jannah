@@ -12,11 +12,11 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/theme/app_palettes.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_logger.dart';
+import '../../../../core/utils/debug_access.dart';
 import '../../../prayer/data/repositories/prayer_notification_service.dart';
 import '../../../prayer/data/repositories/adhan_audio_player.dart';
 import '../../domain/entities/settings_entities.dart';
 import '../bloc/settings_cubit.dart';
-
 
 /// Settings page.
 ///
@@ -32,8 +32,21 @@ import '../bloc/settings_cubit.dart';
 /// the Prayer tab, or the daily background task), since computing the
 /// actual reminder time requires today's prayer times, which this page
 /// does not load.
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  @override
+  void initState() {
+    super.initState();
+    DebugAccess.loadUnlock().then((_) {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +62,7 @@ class SettingsPage extends StatelessWidget {
 
           final settings = state.settings;
           final currentLanguage = settings.language;
+          final debugToolsUnlocked = DebugAccess.isUnlocked;
 
           return ListView(
             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -62,9 +76,9 @@ class SettingsPage extends StatelessWidget {
               _SelectableOptionTile(
                 label: l10n.languageSystemOption,
                 selected: currentLanguage == AppLanguage.system,
-                onTap: () => context
-                    .read<SettingsCubit>()
-                    .setLanguage(AppLanguage.system),
+                onTap: () => context.read<SettingsCubit>().setLanguage(
+                  AppLanguage.system,
+                ),
               ),
               _SelectableOptionTile(
                 // Language names are shown in each language's own native
@@ -121,25 +135,25 @@ class SettingsPage extends StatelessWidget {
                 leadingIcon: Icons.brightness_auto_rounded,
                 label: l10n.themeModeSystemOption,
                 selected: settings.themeMode == AppThemeMode.system,
-                onTap: () => context
-                    .read<SettingsCubit>()
-                    .setThemeMode(AppThemeMode.system),
+                onTap: () => context.read<SettingsCubit>().setThemeMode(
+                  AppThemeMode.system,
+                ),
               ),
               _SelectableOptionTile(
                 leadingIcon: Icons.light_mode_rounded,
                 label: l10n.themeModeLightOption,
                 selected: settings.themeMode == AppThemeMode.light,
-                onTap: () => context
-                    .read<SettingsCubit>()
-                    .setThemeMode(AppThemeMode.light),
+                onTap: () => context.read<SettingsCubit>().setThemeMode(
+                  AppThemeMode.light,
+                ),
               ),
               _SelectableOptionTile(
                 leadingIcon: Icons.dark_mode_rounded,
                 label: l10n.themeModeDarkOption,
                 selected: settings.themeMode == AppThemeMode.dark,
-                onTap: () => context
-                    .read<SettingsCubit>()
-                    .setThemeMode(AppThemeMode.dark),
+                onTap: () => context.read<SettingsCubit>().setThemeMode(
+                  AppThemeMode.dark,
+                ),
               ),
 
               const SizedBox(height: 20),
@@ -192,12 +206,14 @@ class SettingsPage extends StatelessWidget {
                         value: settings.arabicFontSize,
                         min: AppConstants.minArabicFontSize,
                         max: AppConstants.maxArabicFontSize,
-                        divisions: (AppConstants.maxArabicFontSize -
-                                AppConstants.minArabicFontSize)
-                            .round(),
+                        divisions:
+                            (AppConstants.maxArabicFontSize -
+                                    AppConstants.minArabicFontSize)
+                                .round(),
                         activeColor: Theme.of(context).colorScheme.primary,
-                        inactiveColor:
-                            Theme.of(context).colorScheme.primary.withAlpha(50),
+                        inactiveColor: Theme.of(
+                          context,
+                        ).colorScheme.primary.withAlpha(50),
                         onChanged: (value) => context
                             .read<SettingsCubit>()
                             .setArabicFontSize(value),
@@ -206,7 +222,9 @@ class SettingsPage extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(left: 8),
                       child: Text(
-                        l10n.quranArabicFontSize(settings.arabicFontSize.round()),
+                        l10n.quranArabicFontSize(
+                          settings.arabicFontSize.round(),
+                        ),
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                     ),
@@ -229,12 +247,13 @@ class SettingsPage extends StatelessWidget {
                 title: Text(l10n.morningAdhkarReminderOption),
                 value: settings.morningAdhkarReminderEnabled,
                 onChanged: (enabled) {
-                  context
-                      .read<SettingsCubit>()
-                      .setMorningAdhkarReminderEnabled(enabled);
+                  context.read<SettingsCubit>().setMorningAdhkarReminderEnabled(
+                    enabled,
+                  );
                   if (!enabled) {
-                    getIt<PrayerNotificationService>()
-                        .cancelAdhkarReminder(AdhkarReminderKind.morning);
+                    getIt<PrayerNotificationService>().cancelAdhkarReminder(
+                      AdhkarReminderKind.morning,
+                    );
                   }
                 },
               ),
@@ -242,12 +261,13 @@ class SettingsPage extends StatelessWidget {
                 title: Text(l10n.eveningAdhkarReminderOption),
                 value: settings.eveningAdhkarReminderEnabled,
                 onChanged: (enabled) {
-                  context
-                      .read<SettingsCubit>()
-                      .setEveningAdhkarReminderEnabled(enabled);
+                  context.read<SettingsCubit>().setEveningAdhkarReminderEnabled(
+                    enabled,
+                  );
                   if (!enabled) {
-                    getIt<PrayerNotificationService>()
-                        .cancelAdhkarReminder(AdhkarReminderKind.evening);
+                    getIt<PrayerNotificationService>().cancelAdhkarReminder(
+                      AdhkarReminderKind.evening,
+                    );
                   }
                 },
               ),
@@ -270,12 +290,15 @@ class SettingsPage extends StatelessWidget {
                   onTap: () async {
                     try {
                       final intent = AndroidIntent(
-                        action: 'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
+                        action:
+                            'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
                         data: 'package:${AppConstants.orgName}',
                       );
                       await intent.launch();
                     } catch (e) {
-                      debugPrint('Failed to open battery optimization settings: $e');
+                      debugPrint(
+                        'Failed to open battery optimization settings: $e',
+                      );
                     }
                   },
                 ),
@@ -311,96 +334,114 @@ class SettingsPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
 
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Divider(height: 32),
-              ),
-
-              // ── Debug Tools ──
-              _SectionHeader(
-                title: 'Debug Tools',
-                description: 'Test adhan sound and view logs for troubleshooting',
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                leading: const Icon(Icons.volume_up_rounded),
-                title: const Text('Test Adhan Sound'),
-                subtitle: const Text('Play adhan to test audio playback'),
-                trailing: const Icon(Icons.play_arrow_rounded),
-                onTap: () async {
-                  try {
-                    final audioPlayer = getIt<AdhanAudioPlayer>();
-                    AppLogger.info('Manual adhan test triggered from settings');
-                    await audioPlayer.playAdhan('fajr', settings.adhanType);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Playing adhan...')),
+              // ── Debug Tools (hidden; unlock via the About dialog) ──
+              if (debugToolsUnlocked) ...[
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Divider(height: 32),
+                ),
+                _SectionHeader(
+                  title: 'Debug Tools',
+                  description:
+                      'Test adhan sound and view logs for troubleshooting',
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  leading: const Icon(Icons.volume_up_rounded),
+                  title: const Text('Test Adhan Sound'),
+                  subtitle: const Text('Play adhan to test audio playback'),
+                  trailing: const Icon(Icons.play_arrow_rounded),
+                  onTap: () async {
+                    try {
+                      final audioPlayer = getIt<AdhanAudioPlayer>();
+                      AppLogger.info(
+                        'Manual adhan test triggered from settings',
                       );
+                      await audioPlayer.playAdhan('fajr', settings.adhanType);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Playing adhan...')),
+                        );
+                      }
+                    } catch (e) {
+                      AppLogger.error('Failed to play test adhan', error: e);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      }
                     }
-                  } catch (e) {
-                    AppLogger.error('Failed to play test adhan', error: e);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error: $e')),
-                      );
-                    }
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.bug_report_rounded),
-                title: const Text('View Logs'),
-                subtitle: const Text('View recent app logs for debugging'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const _LogViewerPage(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.share_rounded),
-                title: const Text('Share Logs'),
-                subtitle: const Text('Export and share logs for support'),
-                trailing: const Icon(Icons.ios_share),
-                onTap: () async {
-                  try {
-                    final logPath = await AppLogger.exportLogsToFile();
-                    if (logPath != null && context.mounted) {
-                      await Share.shareXFiles([XFile(logPath)], text: 'Ahl Jannah Debug Logs');
-                      AppLogger.info('Logs shared successfully');
-                    } else if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Failed to export logs')),
-                      );
-                    }
-                  } catch (e) {
-                    AppLogger.error('Failed to share logs', error: e);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error: $e')),
-                      );
-                    }
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_rounded),
-                title: const Text('Clear Logs'),
-                subtitle: const Text('Clear all stored logs'),
-                trailing: const Icon(Icons.clear),
-                onTap: () async {
-                  await AppLogger.clearLogs();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Logs cleared')),
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.bug_report_rounded),
+                  title: const Text('View Logs'),
+                  subtitle: const Text('View recent app logs for debugging'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const _LogViewerPage(),
+                      ),
                     );
-                  }
-                },
-              ),
-              const SizedBox(height: 8),
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.share_rounded),
+                  title: const Text('Share Logs'),
+                  subtitle: const Text('Export and share logs for support'),
+                  trailing: const Icon(Icons.ios_share),
+                  onTap: () async {
+                    try {
+                      final logPath = await AppLogger.exportLogsToFile();
+                      if (logPath != null && context.mounted) {
+                        await Share.shareXFiles([
+                          XFile(logPath),
+                        ], text: 'Ahl Jannah Debug Logs');
+                        AppLogger.info('Logs shared successfully');
+                      } else if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Failed to export logs'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      AppLogger.error('Failed to share logs', error: e);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      }
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete_rounded),
+                  title: const Text('Clear Logs'),
+                  subtitle: const Text('Clear all stored logs'),
+                  trailing: const Icon(Icons.clear),
+                  onTap: () async {
+                    await AppLogger.clearLogs();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Logs cleared')),
+                      );
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.visibility_off_rounded),
+                  title: const Text('Hide Debug Tools'),
+                  subtitle: const Text('Hide the debug tools again'),
+                  trailing: const Icon(Icons.lock_outline_rounded),
+                  onTap: () async {
+                    await DebugAccess.resetUnlock();
+                    if (mounted) setState(() {});
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
             ],
           );
         },
@@ -426,6 +467,8 @@ class SettingsPage extends StatelessWidget {
     switch (font) {
       case QuranFont.uthmanic:
         return l10n.quranFontUthmanicName;
+      case QuranFont.uthmanicHafs:
+        return l10n.quranFontUthmanicHafsName;
     }
   }
 }
@@ -466,10 +509,7 @@ class _LogViewerPageState extends State<_LogViewerPage> {
       appBar: AppBar(
         title: const Text('Debug Logs'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadLogs,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadLogs),
         ],
       ),
       body: _logs.isEmpty
@@ -479,7 +519,10 @@ class _LogViewerPageState extends State<_LogViewerPage> {
                 children: [
                   Icon(Icons.inbox_rounded, size: 64, color: Colors.grey),
                   SizedBox(height: 16),
-                  Text('No logs available', style: TextStyle(color: Colors.grey)),
+                  Text(
+                    'No logs available',
+                    style: TextStyle(color: Colors.grey),
+                  ),
                 ],
               ),
             )
@@ -536,8 +579,8 @@ class _SectionHeader extends StatelessWidget {
           Text(
             description,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -564,8 +607,8 @@ class _SubsectionLabel extends StatelessWidget {
             Text(
               description!,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ],
@@ -742,7 +785,8 @@ class _ThemePreviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final paletteColors = theme.extension<AppPaletteColors>();
-    final quranTextColor = paletteColors?.quranText ?? theme.colorScheme.onSurface;
+    final quranTextColor =
+        paletteColors?.quranText ?? theme.colorScheme.onSurface;
 
     return Card(
       child: Padding(
@@ -769,9 +813,7 @@ class _ThemePreviewCard extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: () {},
                     child: Text(
-                      theme.brightness == Brightness.light
-                          ? '☀'
-                          : '☾',
+                      theme.brightness == Brightness.light ? '☀' : '☾',
                     ),
                   ),
                 ),

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:ahl_jannah/core/theme/app_colors.dart';
 import 'package:ahl_jannah/core/theme/app_text_styles.dart';
+import 'package:ahl_jannah/core/utils/debug_access.dart';
 import 'package:ahl_jannah/l10n/generated/app_localizations.dart';
 import 'package:ahl_jannah/features/hadith/presentation/pages/hadith_page.dart';
-import 'package:ahl_jannah/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../bloc/settings_cubit.dart';
 
 /// "More" tab page containing links to Hadith, Settings, and About.
 class MorePage extends StatefulWidget {
@@ -16,7 +18,8 @@ class MorePage extends StatefulWidget {
   State<MorePage> createState() => _MorePageState();
 }
 
-class _MorePageState extends State<MorePage> with AutomaticKeepAliveClientMixin<MorePage> {
+class _MorePageState extends State<MorePage>
+    with AutomaticKeepAliveClientMixin<MorePage> {
   @override
   bool get wantKeepAlive => true;
 
@@ -25,12 +28,14 @@ class _MorePageState extends State<MorePage> with AutomaticKeepAliveClientMixin<
     super.build(context);
     final l10n = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
-    final arabicFontSize = context.watch<SettingsCubit>().state.arabicFontSize;
+
+    final settingsState = context.watch<SettingsCubit>().state;
+    final arabicFontSize = settingsState is SettingsLoadSuccess
+        ? settingsState.settings.arabicFontSize
+        : 28.0;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.moreTabTitle),
-      ),
+      appBar: AppBar(title: Text(l10n.moreTabTitle)),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
@@ -40,9 +45,9 @@ class _MorePageState extends State<MorePage> with AutomaticKeepAliveClientMixin<
             subtitle: l10n.hadithTileSubtitle,
             color: AppColors.primaryGreen,
             onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const HadithPage()),
-              );
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const HadithPage()));
             },
           ),
           _MoreTile(
@@ -58,11 +63,19 @@ class _MorePageState extends State<MorePage> with AutomaticKeepAliveClientMixin<
             subtitle: l10n.aboutTileSubtitle,
             color: AppColors.accentGold,
             onTap: () {
-              showAboutDialog(
+              showDialog<void>(
                 context: context,
-                applicationName: 'Ahl Jannah',
-                applicationVersion: '1.0.0',
-                applicationLegalese: '© 2026 Ahl Jannah',
+                builder: (dialogContext) {
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => DebugAccess.registerTap(),
+                    child: AboutDialog(
+                      applicationName: 'Ahl Jannah',
+                      applicationVersion: '1.0.0',
+                      applicationLegalese: '© 2026 Ahl Jannah',
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -78,19 +91,18 @@ class _MorePageState extends State<MorePage> with AutomaticKeepAliveClientMixin<
                   child: Text(
                     l10n.basmala,
                     textAlign: TextAlign.center,
-                    style: AppTextStyles.arabicBody(fontSize: arabicFontSize).copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                    style: AppTextStyles.arabicBody(
+                      fontSize: arabicFontSize,
+                    ).copyWith(color: colorScheme.onSurfaceVariant),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   l10n.morePageMessage,
                   textAlign: TextAlign.justify,
-                  style: AppTextStyles.arabicBody(fontSize: arabicFontSize).copyWith(
-                    height: 1.8,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                  style: AppTextStyles.arabicBody(
+                    fontSize: arabicFontSize,
+                  ).copyWith(height: 1.8, color: colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -130,10 +142,7 @@ class _MoreTile extends StatelessWidget {
         ),
         child: Icon(icon, color: color, size: 24),
       ),
-      title: Text(
-        title,
-        style: textTheme.titleMedium,
-      ),
+      title: Text(title, style: textTheme.titleMedium),
       subtitle: Text(
         subtitle,
         style: AppTextStyles.bodySmall.copyWith(
