@@ -8,6 +8,12 @@ import '../../../../core/utils/extensions.dart';
 import '../../data/services/quran_bookmark_storage.dart';
 import '../../domain/entities/quran_bookmark.dart';
 
+/// Lists saved page + ayah bookmarks in two tabs.
+///
+/// Bookmarks live in [QuranBookmarkStorage]; this page keeps a local copy
+/// of the list so the UI reflects deletions immediately (optimistic
+/// remove) and reloads it every time a pushed reader page pops back,
+/// so changes made inside the reader are visible right away.
 class QuranBookmarksPage extends StatefulWidget {
   const QuranBookmarksPage({super.key});
 
@@ -18,14 +24,17 @@ class QuranBookmarksPage extends StatefulWidget {
 class _QuranBookmarksPageState extends State<QuranBookmarksPage>
     with SingleTickerProviderStateMixin {
   final QuranBookmarkStorage _storage = QuranBookmarkStorage();
-  late Future<List<QuranBookmark>> _futureBookmarks;
   late final TabController _tabController;
+
+  List<QuranBookmark> _bookmarks = const [];
+  bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _futureBookmarks = _storage.loadBookmarks();
     _tabController = TabController(length: 2, vsync: this);
+    _load();
   }
 
   @override
@@ -34,10 +43,50 @@ class _QuranBookmarksPageState extends State<QuranBookmarksPage>
     super.dispose();
   }
 
-  void _refresh() {
+  Future<void> _load() async {
+    try {
+      final bookmarks = await _storage.loadBookmarks();
+      if (!mounted) return;
+      setState(() {
+        _bookmarks = bookmarks;
+        _loading = false;
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  /// Removes a bookmark from the local list immediately, then persists.
+  /// Re-loads on failure so the item reappears if the write failed.
+  Future<void> _delete(QuranBookmark bookmark) async {
     setState(() {
-      _futureBookmarks = _storage.loadBookmarks();
+      _bookmarks = _bookmarks.where((b) => b.id != bookmark.id).toList(growable: false);
     });
+    try {
+      await _storage.removeBookmark(bookmark.id);
+    } catch (_) {
+      await _load();
+    }
+  }
+
+  /// Opens the reader for a bookmark and refreshes the list when the user
+  /// comes back, so bookmarks toggled inside the reader show up instantly.
+  Future<void> _openReaderFor(QuranBookmark bookmark) async {
+    await context.pushNamed(
+      'quran_reader',
+      extra: {
+        'surahId': bookmark.surahId,
+        'title': bookmark.surahName,
+        'initialAyahId': bookmark.ayahNumber ?? 1,
+        'page': bookmark.page,
+      },
+    );
+    if (mounted) _load();
   }
 
   @override
@@ -69,176 +118,201 @@ class _QuranBookmarksPageState extends State<QuranBookmarksPage>
           ],
         ),
       ),
-      body: FutureBuilder<List<QuranBookmark>>(
-        future: _futureBookmarks,
-        builder: (context, snapshot) {
-          final l10n = AppLocalizations.of(context);
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primaryGreen),
-            );
-          }
+      body: _buildBody(isDark, l10n),
+    );
+  }
 
-          final bookmarks = snapshot.data ?? const [];
+  Widget _buildBody(bool isDark, AppLocalizations l10n) {
+    if (_loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primaryGreen),
+      );
+    }
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline_rounded, size: 56, color: AppColors.error),
+            const SizedBox(height: 12),
+            Text(
+              l10n.commonError(_error!),
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error),
+            ),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _loading = true;
+                  _error = null;
+                });
+                _load();
+              },
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(l10n.commonRetry),
+            ),
+          ],
+        ),
+      );
+    }
 
-          if (bookmarks.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.bookmark_border_rounded,
-                    size: 80,
-                    color: (isDark ? Colors.white24 : Colors.black26),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    l10n.quranNoBookmarksYet,
-                    style: AppTextStyles.bodyLarge.copyWith(
-                      color: isDark
-                          ? AppColors.onSurfaceDarkVariant
-                          : AppColors.onSurfaceLightVariant,
-                    ),
-                  ),
-                ],
+    if (_bookmarks.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.bookmark_border_rounded,
+              size: 80,
+              color: (isDark ? Colors.white24 : Colors.black26),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              l10n.quranNoBookmarksYet,
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: isDark
+                    ? AppColors.onSurfaceDarkVariant
+                    : AppColors.onSurfaceLightVariant,
               ),
-            );
-          }
+            ),
+          ],
+        ),
+      );
+    }
 
-          // 1. Sort Page Bookmarks: newest/last-used first (chrono descending)
-          final pageBookmarks = bookmarks
-              .where((b) => b.isPageBookmark)
-              .toList()
-            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    // 1. Sort Page Bookmarks: newest/last-used first (chrono descending)
+    final pageBookmarks = _bookmarks
+        .where((b) => b.isPageBookmark)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-          // 2. Sort Ayah Bookmarks: grouped by surah (asc), then by ayah number (asc)
-          final ayahBookmarks = bookmarks
-              .where((b) => b.isAyahBookmark)
-              .toList()
-            ..sort((a, b) {
-              final surahCompare = a.surahId.compareTo(b.surahId);
-              if (surahCompare != 0) return surahCompare;
-              return (a.ayahNumber ?? 0).compareTo(b.ayahNumber ?? 0);
-            });
+    // 2. Sort Ayah Bookmarks: grouped by surah (asc), then by ayah number (asc)
+    final ayahBookmarks = _bookmarks
+        .where((b) => b.isAyahBookmark)
+        .toList()
+      ..sort((a, b) {
+        final surahCompare = a.surahId.compareTo(b.surahId);
+        if (surahCompare != 0) return surahCompare;
+        return (a.ayahNumber ?? 0).compareTo(b.ayahNumber ?? 0);
+      });
 
-          // Group ayah bookmarks by surahId (ordered maps preserve insertion order of keys)
-          final ayahGroups = <int, List<QuranBookmark>>{};
-          final surahNames = <int, String>{};
-          for (final bookmark in ayahBookmarks) {
-            ayahGroups.putIfAbsent(bookmark.surahId, () => []).add(bookmark);
-            surahNames[bookmark.surahId] = bookmark.surahName;
-          }
+    // Group ayah bookmarks by surahId (ordered maps preserve insertion order of keys)
+    final ayahGroups = <int, List<QuranBookmark>>{};
+    final surahNames = <int, String>{};
+    for (final bookmark in ayahBookmarks) {
+      ayahGroups.putIfAbsent(bookmark.surahId, () => []).add(bookmark);
+      surahNames[bookmark.surahId] = bookmark.surahName;
+    }
 
-          return TabBarView(
-            controller: _tabController,
-            children: [
-              // ── Tab 1: Pages ──
-              pageBookmarks.isEmpty
-                  ? _buildEmptyTab(l10n.quranNoPageBookmarks, isDark)
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: pageBookmarks.length,
-                      itemBuilder: (context, index) {
-                        final bookmark = pageBookmarks[index];
-                        return _BookmarkTile(
-                          bookmark: bookmark,
-                          isDark: isDark,
-                          onDelete: () async {
-                            await _storage.removeBookmark(bookmark.id);
-                            _refresh();
-                          },
-                        );
-                      },
-                    ),
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: TabBarView(
+        controller: _tabController,
+        children: [
+          // ── Tab 1: Pages ──
+          pageBookmarks.isEmpty
+              ? _buildEmptyTab(l10n.quranNoPageBookmarks, isDark)
+              : ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  itemCount: pageBookmarks.length,
+                  itemBuilder: (context, index) {
+                    final bookmark = pageBookmarks[index];
+                    return _BookmarkTile(
+                      bookmark: bookmark,
+                      isDark: isDark,
+                      onDelete: () => _delete(bookmark),
+                      onOpen: () => _openReaderFor(bookmark),
+                    );
+                  },
+                ),
 
-              // ── Tab 2: Ayahs ──
-              ayahGroups.isEmpty
-                  ? _buildEmptyTab(l10n.quranNoAyahBookmarks, isDark)
-                  : ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: ayahGroups.entries.map((entry) {
-                        final surahId = entry.key;
-                        final surahName = surahNames[surahId] ??
-                            l10n.quranSurahFallback(surahId);
-                        final groupBookmarks = entry.value;
+          // ── Tab 2: Ayahs ──
+          ayahGroups.isEmpty
+              ? _buildEmptyTab(l10n.quranNoAyahBookmarks, isDark)
+              : ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  children: ayahGroups.entries.map((entry) {
+                    final surahId = entry.key;
+                    final surahName = surahNames[surahId] ??
+                        l10n.quranSurahFallback(surahId);
+                    final groupBookmarks = entry.value;
 
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? AppColors.surfaceDarkVariant
-                                : AppColors.surfaceLightVariant,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.surfaceDarkVariant
+                            : AppColors.surfaceLightVariant,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.dividerDark
+                              : AppColors.divider.withAlpha(50),
+                        ),
+                      ),
+                      child: Theme(
+                        data: Theme.of(context).copyWith(
+                          dividerColor: Colors.transparent,
+                        ),
+                        child: ExpansionTile(
+                          initiallyExpanded: true,
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryGreen.withAlpha(20),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.menu_book_rounded,
+                              color: AppColors.primaryGreen,
+                              size: 20,
+                            ),
+                          ),
+                          title: Text(
+                            surahName,
+                            style: AppTextStyles.headingSmall.copyWith(
                               color: isDark
-                                  ? AppColors.dividerDark
-                                  : AppColors.divider.withAlpha(50),
+                                  ? AppColors.onSurfaceDark
+                                  : AppColors.onSurfaceLight,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          child: Theme(
-                            data: Theme.of(context).copyWith(
-                              dividerColor: Colors.transparent,
-                            ),
-                            child: ExpansionTile(
-                              initiallyExpanded: true,
-                              leading: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryGreen.withAlpha(20),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.menu_book_rounded,
-                                  color: AppColors.primaryGreen,
-                                  size: 20,
-                                ),
-                              ),
-                              title: Text(
-                                surahName,
-                                style: AppTextStyles.headingSmall.copyWith(
-                                  color: isDark
-                                      ? AppColors.onSurfaceDark
-                                      : AppColors.onSurfaceLight,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              subtitle: Text(
-                                l10n.quranSavedVersesCount(groupBookmarks.length),
-                                style: AppTextStyles.caption.copyWith(
-                                  color: AppColors.accentGoldDark,
-                                ),
-                              ),
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 16),
-                                  child: Divider(height: 1),
-                                ),
-                                ListView.builder(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: groupBookmarks.length,
-                                  itemBuilder: (context, idx) {
-                                    final bookmark = groupBookmarks[idx];
-                                    return _BookmarkTile(
-                                      bookmark: bookmark,
-                                      isDark: isDark,
-                                      onDelete: () async {
-                                        await _storage.removeBookmark(bookmark.id);
-                                        _refresh();
-                                      },
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 8),
-                              ],
+                          subtitle: Text(
+                            l10n.quranSavedVersesCount(groupBookmarks.length),
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.accentGoldDark,
                             ),
                           ),
-                        );
-                      }).toList(),
-                    ),
-            ],
-          );
-        },
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: Divider(height: 1),
+                            ),
+                            ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: groupBookmarks.length,
+                              itemBuilder: (context, idx) {
+                                final bookmark = groupBookmarks[idx];
+                                return _BookmarkTile(
+                                  bookmark: bookmark,
+                                  isDark: isDark,
+                                  onDelete: () => _delete(bookmark),
+                                  onOpen: () => _openReaderFor(bookmark),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+        ],
       ),
     );
   }
@@ -260,12 +334,14 @@ class _QuranBookmarksPageState extends State<QuranBookmarksPage>
 class _BookmarkTile extends StatelessWidget {
   final QuranBookmark bookmark;
   final bool isDark;
-  final Future<void> Function() onDelete;
+  final VoidCallback onDelete;
+  final VoidCallback onOpen;
 
   const _BookmarkTile({
     required this.bookmark,
     required this.isDark,
     required this.onDelete,
+    required this.onOpen,
   });
 
   @override
@@ -346,17 +422,7 @@ class _BookmarkTile extends StatelessWidget {
               ),
             ],
           ),
-          onTap: () {
-            context.pushNamed(
-              'quran_reader',
-              extra: {
-                'surahId': bookmark.surahId,
-                'title': bookmark.surahName,
-                'initialAyahId': bookmark.ayahNumber ?? 1,
-                'page': bookmark.page,
-              },
-            );
-          },
+          onTap: onOpen,
         ),
       ),
     );
