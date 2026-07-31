@@ -87,7 +87,7 @@ class AhlJannahApp extends StatelessWidget {
                 builder: (context, child) {
                   return Stack(
                     children: [
-                      if (child != null) child,
+                      ?child,
                       const StartupPermissionPrompt(),
                     ],
                   );

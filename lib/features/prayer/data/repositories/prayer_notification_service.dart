@@ -315,6 +315,32 @@ class PrayerNotificationService {
     }
   }
 
+  /// Cancels all notifications except the currently playing adhan and its stop banner.
+  /// This prevents interrupting adhan playback when scheduling new notifications.
+  Future<void> _cancelAllNotificationsExcept(String activePrayerKey) async {
+    try {
+      // Get the IDs of the notifications to preserve
+      final adhanId = PrayerNotificationIds.adhanId(activePrayerKey);
+      final stopBannerId = PrayerNotificationIds.stopBannerId(activePrayerKey);
+      
+      // Cancel all prayer notifications except the active adhan
+      for (final key in _allPrayerKeys) {
+        if (key == activePrayerKey) continue; // Skip the active prayer
+        await _notificationsPlugin.cancel(PrayerNotificationIds.reminderId(key));
+        await _notificationsPlugin.cancel(PrayerNotificationIds.adhanId(key));
+        await _notificationsPlugin.cancel(PrayerNotificationIds.stopBannerId(key));
+      }
+      
+      // Cancel Adhkar reminders
+      await _notificationsPlugin.cancel(PrayerNotificationIds.adhkarReminderId(AdhkarReminderKind.morning));
+      await _notificationsPlugin.cancel(PrayerNotificationIds.adhkarReminderId(AdhkarReminderKind.evening));
+      
+      debugPrint('[NOTIFICATION] Preserved adhan notification for $activePrayerKey (ID: $adhanId, Stop ID: $stopBannerId)');
+    } catch (e, st) {
+      debugPrint('_cancelAllNotificationsExcept failed: $e\n$st');
+    }
+  }
+
   /// Schedules reminder + Adhan (+ Stop Adhan banner) notifications for
   /// today's prayer times. When a prayer time has already passed, the
   /// matching time from [nextDayTimes] is used instead so overnight
@@ -328,21 +354,35 @@ class PrayerNotificationService {
     required AppLanguage language,
     PrayerTimeEntity? nextDayTimes,
   }) async {
+    debugPrint('[NOTIFICATION] schedulePrayerNotifications called');
     await initialize();
 
     // Keep stale prayer alarms from firing after the user turns
     // notifications off. Callers that still need Adhkar should
     // reschedule them after this returns.
     if (!settings.notificationsEnabled) {
+      debugPrint('[NOTIFICATION] Notifications disabled, canceling all');
       await cancelAllNotifications();
       return;
     }
 
     final l10n = lookupAppLocalizations(_resolveNotificationLocale(language));
-
-    await cancelAllNotifications();
+    
+    // Check if there's an active adhan currently playing to avoid canceling it
+    final activePrayerKey = PrayerNotificationIds.activePrayerKey(prayerTimes, settings);
+    debugPrint('[NOTIFICATION] Active prayer key: $activePrayerKey');
+    
+    if (activePrayerKey != null) {
+      debugPrint('[NOTIFICATION] Adhan currently playing for $activePrayerKey - preserving it');
+      // Cancel all notifications except the currently playing adhan and its stop banner
+      await _cancelAllNotificationsExcept(activePrayerKey);
+    } else {
+      debugPrint('[NOTIFICATION] No active adhan, canceling all previous notifications');
+      await cancelAllNotifications();
+    }
 
     final scheduleMode = await _resolveAndroidScheduleMode();
+    debugPrint('[NOTIFICATION] Android schedule mode: $scheduleMode');
 
     final todayTimes = <String, DateTime>{
       'fajr': prayerTimes.fajr,
@@ -384,7 +424,11 @@ class PrayerNotificationService {
         scheduleMode: scheduleMode,
       );
 
-      if (_adhanPrayerKeys.contains(key)) {
+      // Don't reschedule the adhan for the currently active prayer —
+      // it is already showing and playing. Calling _scheduleAdhan with
+      // tomorrow's time + the same notification ID would cancel the
+      // currently-showing notification and kill its sound immediately.
+      if (_adhanPrayerKeys.contains(key) && key != activePrayerKey) {
         await _scheduleAdhan(
           l10n: l10n,
           prayerKey: key,
@@ -576,9 +620,14 @@ class PrayerNotificationService {
     required AdhanType adhanType,
     required AndroidScheduleMode scheduleMode,
   }) async {
-    if (!prayerTime.isAfter(now)) return;
+    debugPrint('[NOTIFICATION] _scheduleAdhan called for $title at $prayerTime');
+    if (!prayerTime.isAfter(now)) {
+      debugPrint('[NOTIFICATION] Skipping adhan for $title - prayer time is in the past');
+      return;
+    }
 
     final soundName = _soundResourceFor(prayerKey, adhanType);
+    debugPrint('[NOTIFICATION] Using sound file: $soundName for $title');
     // iOS custom notification sounds are capped (~30s). Full Adhan files
     // exceed that, so Darwin always uses the short clip while Android
     // still plays the selected full/short/Fajr resource from res/raw.
@@ -622,9 +671,9 @@ class PrayerNotificationService {
         payload: prayerKey,
         matchDateTimeComponents: DateTimeComponents.time,
       );
-      debugPrint('Scheduled adhan for $title at $prayerTime ($soundName)');
+      debugPrint('[NOTIFICATION] SUCCESS: Scheduled adhan for $title at $prayerTime ($soundName)');
     } catch (e) {
-      debugPrint('Failed to schedule adhan for $title: $e');
+      debugPrint('[NOTIFICATION] FAILED to schedule adhan for $title: $e');
     }
 
     // A second, silent, ongoing notification carrying the "Stop Adhan"
@@ -726,22 +775,20 @@ class PrayerNotificationService {
   /// and falls back to inexact scheduling when they're not — this is
   /// the fix for notifications silently failing to schedule at all.
   Future<AndroidScheduleMode> _resolveAndroidScheduleMode() async {
-    if (!Platform.isAndroid) return AndroidScheduleMode.exactAllowWhileIdle;
     try {
       final androidImpl = _notificationsPlugin
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       final canExact = await androidImpl?.canScheduleExactNotifications() ?? false;
       if (!canExact) {
-        debugPrint(
-          'Exact alarms not permitted — falling back to inexact scheduling. '
-          'Prayer notifications may fire a few minutes late.',
-        );
+        debugPrint('[NOTIFICATION] Exact alarms NOT permitted - falling back to inexact scheduling');
+      } else {
+        debugPrint('[NOTIFICATION] Exact alarms permitted - using exact scheduling');
       }
       return canExact
           ? AndroidScheduleMode.exactAllowWhileIdle
           : AndroidScheduleMode.inexactAllowWhileIdle;
     } catch (e) {
-      debugPrint('Failed to check exact-alarm permission: $e');
+      debugPrint('[NOTIFICATION] Failed to check exact-alarm permission: $e');
       return AndroidScheduleMode.inexactAllowWhileIdle;
     }
   }

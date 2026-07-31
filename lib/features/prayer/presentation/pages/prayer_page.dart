@@ -87,10 +87,28 @@ class _PrayerPageState extends State<PrayerPage>
     try {
       final player = AudioPlayer();
       _inAppAdhanPlayer = player;
+      // Use alarm context with no audio focus so the adhan is not
+      // interrupted by notifications, touch sounds, or other transient
+      // audio events — it should only stop when the user explicitly presses Stop.
+      await player.setAudioContext(AudioContext(
+        android: AudioContextAndroid(
+          usageType: AndroidUsageType.alarm,
+          audioFocus: AndroidAudioFocus.none,
+        ),
+      ));
       await player.play(AssetSource(_adhanAssetFor(prayerKey)));
       player.onPlayerComplete.listen((_) {
         if (mounted) {
           setState(() => _currentlyPlayingKey = null);
+        }
+      });
+      player.onPlayerStateChanged.listen((state) {
+        if (state == PlayerState.stopped ||
+            state == PlayerState.completed ||
+            state == PlayerState.paused) {
+          if (mounted) {
+            setState(() => _currentlyPlayingKey = null);
+          }
         }
       });
     } catch (e) {
