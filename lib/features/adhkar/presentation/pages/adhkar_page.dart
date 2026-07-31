@@ -7,6 +7,7 @@ import 'package:ahl_jannah/core/theme/app_text_styles.dart';
 import 'package:ahl_jannah/l10n/generated/app_localizations.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../settings/presentation/bloc/settings_cubit.dart';
 import '../../domain/entities/adhkar_entities.dart';
 import '../bloc/adhkar_cubit.dart';
 import '../widgets/adhkar_category_reader.dart';
@@ -89,8 +90,9 @@ class _AdhkarPageState extends State<AdhkarPage>
     await _cubit.search('');
     await _cubit.selectCategory(item.category);
     if (!mounted) return;
-    final idx = _cubit.state.currentItems
-        .indexWhere((i) => i.uniqueKey == item.uniqueKey);
+    final idx = _cubit.state.currentItems.indexWhere(
+      (i) => i.uniqueKey == item.uniqueKey,
+    );
     setState(() => _readerInitialIndex = idx >= 0 ? idx : 0);
   }
 
@@ -113,12 +115,12 @@ class _AdhkarPageState extends State<AdhkarPage>
           return Scaffold(
             appBar: AppBar(
               title: Text(title),
-              titleTextStyle:
-                  AppTextStyles.arabicHeading(fontSize: 20).copyWith(
-                color: isDark
-                    ? AppColors.onSurfaceDark
-                    : AppColors.onSurfaceLight,
-              ),
+              titleTextStyle: AppTextStyles.arabicHeading(fontSize: 20)
+                  .copyWith(
+                    color: isDark
+                        ? AppColors.onSurfaceDark
+                        : AppColors.onSurfaceLight,
+                  ),
               leading: inCategory
                   ? IconButton(
                       icon: const Icon(Icons.arrow_back_rounded),
@@ -179,6 +181,11 @@ class _AdhkarPageState extends State<AdhkarPage>
     final query = state.searchQuery.trim();
     final searching = query.isNotEmpty;
 
+    final settingsState = context.watch<SettingsCubit>().state;
+    final arabicFontSize = settingsState is SettingsLoadSuccess
+        ? settingsState.settings.arabicFontSize
+        : 28.0;
+
     if (state.selectedCategory != null) {
       final items = state.currentItems;
       final safeIndex = _readerInitialIndex.clamp(
@@ -190,7 +197,7 @@ class _AdhkarPageState extends State<AdhkarPage>
         items: items,
         isLoading: state.isLoading,
         emptyLabel: l10n.adhkarEmptyCategory,
-        arabicFontSize: state.settings.arabicFontSize,
+        arabicFontSize: arabicFontSize,
         initialIndex: safeIndex,
       );
     }

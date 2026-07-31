@@ -13,6 +13,7 @@ import 'package:ahl_jannah/core/theme/app_text_styles.dart';
 import 'package:ahl_jannah/l10n/generated/app_localizations.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/widgets/clear_text_suffix.dart';
 import '../../../settings/domain/entities/settings_entities.dart';
 import '../../../settings/presentation/bloc/settings_cubit.dart';
 import '../../domain/entities/adhkar_entities.dart';
@@ -132,6 +133,11 @@ class _TasbeehPageState extends State<TasbeehPage>
     final l10n = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final settingsState = context.read<SettingsCubit>().state;
+    final arabicFontSize = settingsState is SettingsLoadSuccess
+        ? settingsState.settings.arabicFontSize
+        : 28.0;
+
     return BlocProvider.value(
       value: _cubit,
       child: BlocBuilder<TasbeehCubit, TasbeehState>(
@@ -159,10 +165,12 @@ class _TasbeehPageState extends State<TasbeehPage>
                     : _TasbeehBody(
                         state: state,
                         isDark: isDark,
+                        arabicFontSize: arabicFontSize,
                         elapsedMs: _cubit.liveElapsedMs(),
                         onIncrement: () {
-                          final settingsState =
-                              context.read<SettingsCubit>().state;
+                          final settingsState = context
+                              .read<SettingsCubit>()
+                              .state;
                           final settings = settingsState is SettingsLoadSuccess
                               ? settingsState.settings
                               : SettingsEntity.defaultSettings();
@@ -201,6 +209,7 @@ class _TasbeehPageState extends State<TasbeehPage>
               autofocus: true,
               decoration: InputDecoration(
                 labelText: l10n.tasbeehCustomTargetLabel,
+                suffixIcon: ClearTextSuffix(controller: controller),
               ),
             ),
             actions: [
@@ -285,6 +294,7 @@ class _TasbeehPageState extends State<TasbeehPage>
 class _TasbeehBody extends StatelessWidget {
   final TasbeehState state;
   final bool isDark;
+  final double arabicFontSize;
   final int elapsedMs;
   final VoidCallback onIncrement;
   final VoidCallback onReset;
@@ -293,6 +303,7 @@ class _TasbeehBody extends StatelessWidget {
   const _TasbeehBody({
     required this.state,
     required this.isDark,
+    required this.arabicFontSize,
     required this.elapsedMs,
     required this.onIncrement,
     required this.onReset,
@@ -354,7 +365,9 @@ class _TasbeehBody extends StatelessWidget {
                             ? TextDirection.rtl
                             : null,
                         style: state.hasDhikrText
-                            ? AppTextStyles.arabicBody(fontSize: 28).copyWith(
+                            ? AppTextStyles.arabicBody(
+                                fontSize: arabicFontSize,
+                              ).copyWith(
                                 height: 1.9,
                                 color: isDark
                                     ? AppColors.onSurfaceDark
@@ -614,16 +627,18 @@ class _ConfettiWidgetState extends State<ConfettiWidget> {
     ];
 
     for (int i = 0; i < 90; i++) {
-      _particles.add(ConfettiParticle(
-        x: random.nextDouble() * size.width,
-        y: -random.nextDouble() * size.height * 0.5,
-        color: colors[random.nextInt(colors.length)],
-        size: random.nextDouble() * 8 + 6,
-        vx: (random.nextDouble() - 0.5) * 4,
-        vy: random.nextDouble() * 5 + 4,
-        rotation: random.nextDouble() * math.pi * 2,
-        rotationSpeed: (random.nextDouble() - 0.5) * 0.2,
-      ));
+      _particles.add(
+        ConfettiParticle(
+          x: random.nextDouble() * size.width,
+          y: -random.nextDouble() * size.height * 0.5,
+          color: colors[random.nextInt(colors.length)],
+          size: random.nextDouble() * 8 + 6,
+          vx: (random.nextDouble() - 0.5) * 4,
+          vy: random.nextDouble() * 5 + 4,
+          rotation: random.nextDouble() * math.pi * 2,
+          rotationSpeed: (random.nextDouble() - 0.5) * 0.2,
+        ),
+      );
     }
   }
 
@@ -676,7 +691,11 @@ class _ConfettiPainter extends CustomPainter {
       canvas.rotate(p.rotation);
       if (p.size % 2 == 0) {
         canvas.drawRect(
-          Rect.fromCenter(center: Offset.zero, width: p.size, height: p.size * 0.6),
+          Rect.fromCenter(
+            center: Offset.zero,
+            width: p.size,
+            height: p.size * 0.6,
+          ),
           paint,
         );
       } else {
@@ -750,10 +769,16 @@ class _StatsSheetContentState extends State<_StatsSheetContent> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(widget.l10n.tasbeehStatsTitle, style: AppTextStyles.headingSmall),
+                  Text(
+                    widget.l10n.tasbeehStatsTitle,
+                    style: AppTextStyles.headingSmall,
+                  ),
                   IconButton(
                     tooltip: widget.l10n.commonClear,
-                    icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Colors.redAccent,
+                    ),
                     onPressed: () => _showClearStatsDialog(context),
                   ),
                 ],
@@ -858,7 +883,9 @@ class _StatsSheetContentState extends State<_StatsSheetContent> {
                     itemBuilder: (context, index) {
                       final dateKey = allDays[index];
                       final isToday = dateKey == TasbeehStats.todayKey();
-                      final label = isToday ? widget.l10n.tasbeehStatsToday : _formatDate(dateKey);
+                      final label = isToday
+                          ? widget.l10n.tasbeehStatsToday
+                          : _formatDate(dateKey);
 
                       return _DateChip(
                         date: dateKey,
@@ -886,11 +913,13 @@ class _StatsSheetContentState extends State<_StatsSheetContent> {
                     style: AppTextStyles.headingSmall,
                   ),
                   const SizedBox(height: 12),
-                  ...filteredDailyByDhikr.map((entry) => _DhikrStatTile(
-                        dhikrText: entry.key,
-                        stats: entry.value,
-                        l10n: widget.l10n,
-                      )),
+                  ...filteredDailyByDhikr.map(
+                    (entry) => _DhikrStatTile(
+                      dhikrText: entry.key,
+                      stats: entry.value,
+                      l10n: widget.l10n,
+                    ),
+                  ),
                 ] else
                   Padding(
                     padding: const EdgeInsets.all(24.0),
@@ -917,11 +946,13 @@ class _StatsSheetContentState extends State<_StatsSheetContent> {
                     style: AppTextStyles.headingSmall,
                   ),
                   const SizedBox(height: 12),
-                  ...filteredLifetimeByDhikr.map((entry) => _DhikrStatTile(
-                        dhikrText: entry.key,
-                        stats: entry.value,
-                        l10n: widget.l10n,
-                      )),
+                  ...filteredLifetimeByDhikr.map(
+                    (entry) => _DhikrStatTile(
+                      dhikrText: entry.key,
+                      stats: entry.value,
+                      l10n: widget.l10n,
+                    ),
+                  ),
                 ] else
                   Padding(
                     padding: const EdgeInsets.all(24.0),
@@ -1022,9 +1053,7 @@ class _SummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1037,7 +1066,10 @@ class _SummaryCard extends StatelessWidget {
               _MetricItem(
                 icon: Icons.repeat_rounded,
                 value: '${stats.totalRepetitions}',
-                label: l10n.tasbeehStatRepetitions(stats.totalRepetitions).split(' ').last,
+                label: l10n
+                    .tasbeehStatRepetitions(stats.totalRepetitions)
+                    .split(' ')
+                    .last,
               ),
               _MetricItem(
                 icon: Icons.timer_outlined,
@@ -1048,7 +1080,10 @@ class _SummaryCard extends StatelessWidget {
                 _MetricItem(
                   icon: Icons.task_alt_rounded,
                   value: '${stats.completedSessions}',
-                  label: l10n.tasbeehStatSessions(stats.completedSessions).split(' ').last,
+                  label: l10n
+                      .tasbeehStatSessions(stats.completedSessions)
+                      .split(' ')
+                      .last,
                 ),
             ],
           ),
@@ -1084,9 +1119,7 @@ class _MetricItem extends StatelessWidget {
         ),
         Text(
           label,
-          style: AppTextStyles.caption.copyWith(
-            color: scheme.onSurfaceVariant,
-          ),
+          style: AppTextStyles.caption.copyWith(color: scheme.onSurfaceVariant),
         ),
       ],
     );
@@ -1157,9 +1190,7 @@ class _DhikrStatTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1170,10 +1201,9 @@ class _DhikrStatTile extends StatelessWidget {
             textAlign: TextAlign.center,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.arabicBody(fontSize: 22).copyWith(
-              color: scheme.onSurface,
-              height: 1.6,
-            ),
+            style: AppTextStyles.arabicBody(
+              fontSize: 22,
+            ).copyWith(color: scheme.onSurface, height: 1.6),
           ),
           const SizedBox(height: 10),
           const Divider(height: 1),
@@ -1183,7 +1213,11 @@ class _DhikrStatTile extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(Icons.repeat_rounded, size: 16, color: AppColors.primaryGreen),
+                  Icon(
+                    Icons.repeat_rounded,
+                    size: 16,
+                    color: AppColors.primaryGreen,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     '${stats.totalRepetitions}',
@@ -1195,7 +1229,11 @@ class _DhikrStatTile extends StatelessWidget {
               ),
               Row(
                 children: [
-                  Icon(Icons.timer_outlined, size: 16, color: AppColors.accentGoldDark),
+                  Icon(
+                    Icons.timer_outlined,
+                    size: 16,
+                    color: AppColors.accentGoldDark,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     timeStr,
@@ -1208,7 +1246,11 @@ class _DhikrStatTile extends StatelessWidget {
               if (stats.completedSessions > 0)
                 Row(
                   children: [
-                    Icon(Icons.task_alt_rounded, size: 16, color: AppColors.success),
+                    Icon(
+                      Icons.task_alt_rounded,
+                      size: 16,
+                      color: AppColors.success,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       '${stats.completedSessions}',
@@ -1422,7 +1464,9 @@ class _DhikrPickerSheetState extends State<_DhikrPickerSheet> {
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
@@ -1528,18 +1572,15 @@ class _DhikrPickerSheetState extends State<_DhikrPickerSheet> {
                 Icons.search_rounded,
                 color: scheme.primary.withAlpha(180),
               ),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear_rounded, size: 20),
-                      onPressed: () {
-                        _searchController.clear();
-                        _onSearch('');
-                      },
-                    )
-                  : null,
+              suffixIcon: ClearTextSuffix(
+                controller: _searchController,
+                onClear: () => _onSearch(''),
+              ),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 14),
+                horizontal: 16,
+                vertical: 14,
+              ),
             ),
           ),
         ),
@@ -1559,114 +1600,114 @@ class _DhikrPickerSheetState extends State<_DhikrPickerSheet> {
             ),
           )
         else
-          ..._catalogHits.map(
-            (item) {
-              final isInCollection = widget.cubit.isInCollection(item);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Material(
-                  color: isDark ? AppColors.cardDark : AppColors.cardLight,
+          ..._catalogHits.map((item) {
+            final isInCollection = widget.cubit.isInCollection(item);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
+                color: isDark ? AppColors.cardDark : AppColors.cardLight,
+                borderRadius: BorderRadius.circular(16),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
                   borderRadius: BorderRadius.circular(16),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () {
-                      widget.cubit.startWithCatalogDhikr(item);
-                      widget.onPicked();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isDark
-                              ? AppColors.dividerDark
-                              : AppColors.divider.withAlpha(80),
-                        ),
+                  onTap: () {
+                    widget.cubit.startWithCatalogDhikr(item);
+                    widget.onPicked();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.dividerDark
+                            : AppColors.divider.withAlpha(80),
                       ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: isInCollection
-                                  ? AppColors.accentGold
-                                  : scheme.primary.withAlpha(80),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: isInCollection
+                                ? AppColors.accentGold
+                                : scheme.primary.withAlpha(80),
+                            borderRadius: BorderRadius.circular(2),
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.arabic,
+                                textDirection: TextDirection.rtl,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.bodyLarge.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? AppColors.onSurfaceDark
+                                      : AppColors.onSurfaceLight,
+                                ),
+                              ),
+                              if (item.translation.isNotEmpty) ...[
+                                const SizedBox(height: 4),
                                 Text(
-                                  item.arabic,
-                                  textDirection: TextDirection.rtl,
-                                  maxLines: 2,
+                                  item.translation,
+                                  maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: AppTextStyles.bodyLarge.copyWith(
-                                    fontWeight: FontWeight.w600,
+                                  style: AppTextStyles.bodySmall.copyWith(
                                     color: isDark
-                                        ? AppColors.onSurfaceDark
-                                        : AppColors.onSurfaceLight,
+                                        ? AppColors.onSurfaceDarkVariant
+                                        : AppColors.onSurfaceLightVariant,
                                   ),
                                 ),
-                                if (item.translation.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    item.translation,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppTextStyles.bodySmall.copyWith(
-                                      color: isDark
-                                          ? AppColors.onSurfaceDarkVariant
-                                          : AppColors.onSurfaceLightVariant,
-                                    ),
-                                  ),
-                                ],
                               ],
-                            ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(20),
-                              onTap: () async {
-                                await widget.cubit.addToCollection(item);
-                                setState(() {});
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: isInCollection
-                                      ? AppColors.accentGold.withAlpha(25)
-                                      : scheme.primary.withAlpha(15),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  isInCollection
-                                      ? Icons.bookmark_rounded
-                                      : Icons.bookmark_add_outlined,
-                                  color: isInCollection
-                                      ? AppColors.accentGold
-                                      : scheme.primary,
-                                  size: 20,
-                                ),
+                        ),
+                        const SizedBox(width: 8),
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () async {
+                              await widget.cubit.addToCollection(item);
+                              setState(() {});
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: isInCollection
+                                    ? AppColors.accentGold.withAlpha(25)
+                                    : scheme.primary.withAlpha(15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                isInCollection
+                                    ? Icons.bookmark_rounded
+                                    : Icons.bookmark_add_outlined,
+                                color: isInCollection
+                                    ? AppColors.accentGold
+                                    : scheme.primary,
+                                size: 20,
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          }),
       ],
     );
   }
@@ -1680,8 +1721,9 @@ class _DhikrPickerSheetState extends State<_DhikrPickerSheet> {
         context: context,
         builder: (ctx) {
           return AlertDialog(
-            backgroundColor:
-                isDark ? AppColors.surfaceDarkVariant : AppColors.cardLight,
+            backgroundColor: isDark
+                ? AppColors.surfaceDarkVariant
+                : AppColors.cardLight,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
@@ -1732,6 +1774,7 @@ class _DhikrPickerSheetState extends State<_DhikrPickerSheet> {
                   ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.all(14),
+                  suffixIcon: ClearTextSuffix(controller: controller),
                 ),
               ),
             ),
@@ -1850,9 +1893,7 @@ class _SectionHeader extends StatelessWidget {
         Text(
           label,
           style: AppTextStyles.headingSmall.copyWith(
-            color: isDark
-                ? AppColors.onSurfaceDark
-                : AppColors.onSurfaceLight,
+            color: isDark ? AppColors.onSurfaceDark : AppColors.onSurfaceLight,
           ),
         ),
       ],

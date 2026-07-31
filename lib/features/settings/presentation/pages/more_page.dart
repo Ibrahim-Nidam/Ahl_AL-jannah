@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:ahl_jannah/core/theme/app_colors.dart';
 import 'package:ahl_jannah/core/theme/app_text_styles.dart';
 import 'package:ahl_jannah/l10n/generated/app_localizations.dart';
 import 'package:ahl_jannah/features/hadith/presentation/pages/hadith_page.dart';
+import 'package:ahl_jannah/features/settings/presentation/cubit/settings_cubit.dart';
 
 /// "More" tab page containing links to Hadith, Settings, and About.
 class MorePage extends StatefulWidget {
@@ -23,6 +25,7 @@ class _MorePageState extends State<MorePage> with AutomaticKeepAliveClientMixin<
     super.build(context);
     final l10n = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
+    final arabicFontSize = context.watch<SettingsCubit>().state.arabicFontSize;
 
     return Scaffold(
       appBar: AppBar(
@@ -75,7 +78,7 @@ class _MorePageState extends State<MorePage> with AutomaticKeepAliveClientMixin<
                   child: Text(
                     l10n.basmala,
                     textAlign: TextAlign.center,
-                    style: AppTextStyles.arabicBody(fontSize: 26).copyWith(
+                    style: AppTextStyles.arabicBody(fontSize: arabicFontSize).copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),
@@ -84,7 +87,7 @@ class _MorePageState extends State<MorePage> with AutomaticKeepAliveClientMixin<
                 Text(
                   l10n.morePageMessage,
                   textAlign: TextAlign.justify,
-                  style: AppTextStyles.arabicBody(fontSize: 22).copyWith(
+                  style: AppTextStyles.arabicBody(fontSize: arabicFontSize).copyWith(
                     height: 1.8,
                     color: colorScheme.onSurfaceVariant,
                   ),

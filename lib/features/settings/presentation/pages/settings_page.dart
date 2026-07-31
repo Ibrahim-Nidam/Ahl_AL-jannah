@@ -109,6 +109,7 @@ class SettingsPage extends StatelessWidget {
                   title: l10n.themePreviewTitle,
                   quranSample: l10n.basmala,
                   quranFont: settings.quranFont,
+                  arabicFontSize: settings.arabicFontSize,
                 ),
               ),
               const SizedBox(height: 20),
@@ -174,6 +175,44 @@ class SettingsPage extends StatelessWidget {
                   selected: settings.quranFont == font,
                   onTap: () => context.read<SettingsCubit>().setQuranFont(font),
                 ),
+
+              const SizedBox(height: 20),
+
+              // Arabic reading font size (Quran, Hadith, Adhkar)
+              _SubsectionLabel(
+                text: l10n.arabicFontSizeSectionTitle,
+                description: l10n.arabicFontSizeSectionDescription,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Slider(
+                        value: settings.arabicFontSize,
+                        min: AppConstants.minArabicFontSize,
+                        max: AppConstants.maxArabicFontSize,
+                        divisions: (AppConstants.maxArabicFontSize -
+                                AppConstants.minArabicFontSize)
+                            .round(),
+                        activeColor: Theme.of(context).colorScheme.primary,
+                        inactiveColor:
+                            Theme.of(context).colorScheme.primary.withAlpha(50),
+                        onChanged: (value) => context
+                            .read<SettingsCubit>()
+                            .setArabicFontSize(value),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Text(
+                        l10n.quranArabicFontSize(settings.arabicFontSize.round()),
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
@@ -691,11 +730,13 @@ class _ThemePreviewCard extends StatelessWidget {
     required this.title,
     required this.quranSample,
     required this.quranFont,
+    required this.arabicFontSize,
   });
 
   final String title;
   final String quranSample;
   final QuranFont quranFont;
+  final double arabicFontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -714,7 +755,7 @@ class _ThemePreviewCard extends StatelessWidget {
             Text(
               quranSample,
               style: AppTextStyles.arabicQuran(
-                fontSize: 24,
+                fontSize: arabicFontSize,
                 fontFamily: quranFont.fontFamily,
                 fontFamilyFallback: quranFont.fontFamilyFallback,
               ).copyWith(color: quranTextColor),

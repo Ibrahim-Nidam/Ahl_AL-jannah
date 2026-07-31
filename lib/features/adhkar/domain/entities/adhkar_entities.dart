@@ -138,46 +138,44 @@ class AdhkarCategory {
 }
 
 /// Persistent user settings for the Adhkar feature.
+///
+/// The Arabic reading font size is no longer stored here — it lives on
+/// the app-wide [SettingsEntity] (see the Settings page) so Quran, Hadith,
+/// and Adhkar all share one control.
 class AdhkarSettings {
   final bool vibrateOnTap;
   final bool autoNext;
   final bool keepScreenAwake;
-  final double arabicFontSize;
 
   const AdhkarSettings({
     this.vibrateOnTap = true,
     this.autoNext = false,
     this.keepScreenAwake = true,
-    this.arabicFontSize = 22.0,
   });
 
   AdhkarSettings copyWith({
     bool? vibrateOnTap,
     bool? autoNext,
     bool? keepScreenAwake,
-    double? arabicFontSize,
   }) {
     return AdhkarSettings(
       vibrateOnTap: vibrateOnTap ?? this.vibrateOnTap,
       autoNext: autoNext ?? this.autoNext,
       keepScreenAwake: keepScreenAwake ?? this.keepScreenAwake,
-      arabicFontSize: arabicFontSize ?? this.arabicFontSize,
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'vibrateOnTap': vibrateOnTap,
-        'autoNext': autoNext,
-        'keepScreenAwake': keepScreenAwake,
-        'arabicFontSize': arabicFontSize,
-      };
+    'vibrateOnTap': vibrateOnTap,
+    'autoNext': autoNext,
+    'keepScreenAwake': keepScreenAwake,
+  };
 
   factory AdhkarSettings.fromJson(Map<String, dynamic> json) {
     return AdhkarSettings(
       vibrateOnTap: json['vibrateOnTap'] as bool? ?? true,
       autoNext: json['autoNext'] as bool? ?? false,
       keepScreenAwake: json['keepScreenAwake'] as bool? ?? true,
-      arabicFontSize: (json['arabicFontSize'] as num?)?.toDouble() ?? 22.0,
     );
   }
 }
@@ -185,13 +183,7 @@ class AdhkarSettings {
 // ── Tasbeeh domain types (shared via Adhkar feature; no duplicate catalog) ──
 
 /// Counter target mode for Digital Tasbeeh.
-enum TasbeehCounterMode {
-  preset33,
-  preset99,
-  preset100,
-  custom,
-  unlimited,
-}
+enum TasbeehCounterMode { preset33, preset99, preset100, custom, unlimited }
 
 extension TasbeehCounterModeX on TasbeehCounterMode {
   /// Resolved target count. `0` means unlimited. Custom uses [customTarget].
@@ -227,10 +219,10 @@ class TasbeehCollectionItem {
   });
 
   Map<String, dynamic> toJson() => {
-        'arabic': arabic,
-        'catalogUniqueKey': catalogUniqueKey,
-        'translation': translation,
-      };
+    'arabic': arabic,
+    'catalogUniqueKey': catalogUniqueKey,
+    'translation': translation,
+  };
 
   factory TasbeehCollectionItem.fromJson(Map<String, dynamic> json) {
     return TasbeehCollectionItem(
@@ -273,10 +265,10 @@ class TasbeehAggregateStats {
   }
 
   Map<String, dynamic> toJson() => {
-        'completedSessions': completedSessions,
-        'totalRepetitions': totalRepetitions,
-        'totalTimeMs': totalTimeMs,
-      };
+    'completedSessions': completedSessions,
+    'totalRepetitions': totalRepetitions,
+    'totalTimeMs': totalTimeMs,
+  };
 
   factory TasbeehAggregateStats.fromJson(Map<String, dynamic>? json) {
     if (json == null) return const TasbeehAggregateStats();
@@ -309,18 +301,15 @@ class TasbeehDayStats {
     return TasbeehDayStats(
       date: date,
       totals: totals + delta,
-      byDhikr: {
-        ...byDhikr,
-        key: existing + delta,
-      },
+      byDhikr: {...byDhikr, key: existing + delta},
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'date': date,
-        'totals': totals.toJson(),
-        'byDhikr': byDhikr.map((k, v) => MapEntry(k, v.toJson())),
-      };
+    'date': date,
+    'totals': totals.toJson(),
+    'byDhikr': byDhikr.map((k, v) => MapEntry(k, v.toJson())),
+  };
 
   factory TasbeehDayStats.fromJson(String date, Map<String, dynamic> json) {
     final rawBy = json['byDhikr'] as Map<String, dynamic>? ?? const {};
@@ -372,8 +361,7 @@ class TasbeehStats {
 
   /// Newest-first list of day keys that have any activity.
   List<String> get sortedDayKeys {
-    final keys = days.keys.toList()
-      ..sort((a, b) => b.compareTo(a));
+    final keys = days.keys.toList()..sort((a, b) => b.compareTo(a));
     return keys;
   }
 
@@ -409,10 +397,7 @@ class TasbeehStats {
     return TasbeehStats(
       days: {...days, date: day},
       lifetime: lifetime + delta,
-      lifetimeByDhikr: {
-        ...lifetimeByDhikr,
-        text: existingLife + delta,
-      },
+      lifetimeByDhikr: {...lifetimeByDhikr, text: existingLife + delta},
     );
   }
 
@@ -429,13 +414,19 @@ class TasbeehStats {
     // Subtract that day's totals from lifetime aggregates.
     var newLifetime = TasbeehAggregateStats(
       completedSessions:
-          (lifetime.completedSessions - day.totals.completedSessions)
-              .clamp(0, 1 << 30),
+          (lifetime.completedSessions - day.totals.completedSessions).clamp(
+            0,
+            1 << 30,
+          ),
       totalRepetitions:
-          (lifetime.totalRepetitions - day.totals.totalRepetitions)
-              .clamp(0, 1 << 30),
-      totalTimeMs:
-          (lifetime.totalTimeMs - day.totals.totalTimeMs).clamp(0, 1 << 30),
+          (lifetime.totalRepetitions - day.totals.totalRepetitions).clamp(
+            0,
+            1 << 30,
+          ),
+      totalTimeMs: (lifetime.totalTimeMs - day.totals.totalTimeMs).clamp(
+        0,
+        1 << 30,
+      ),
     );
 
     final newByDhikr = Map<String, TasbeehAggregateStats>.from(lifetimeByDhikr);
@@ -444,13 +435,16 @@ class TasbeehStats {
       if (prev == null) continue;
       final next = TasbeehAggregateStats(
         completedSessions:
-            (prev.completedSessions - entry.value.completedSessions)
-                .clamp(0, 1 << 30),
-        totalRepetitions:
-            (prev.totalRepetitions - entry.value.totalRepetitions)
-                .clamp(0, 1 << 30),
-        totalTimeMs:
-            (prev.totalTimeMs - entry.value.totalTimeMs).clamp(0, 1 << 30),
+            (prev.completedSessions - entry.value.completedSessions).clamp(
+              0,
+              1 << 30,
+            ),
+        totalRepetitions: (prev.totalRepetitions - entry.value.totalRepetitions)
+            .clamp(0, 1 << 30),
+        totalTimeMs: (prev.totalTimeMs - entry.value.totalTimeMs).clamp(
+          0,
+          1 << 30,
+        ),
       );
       if (next.isEmpty) {
         newByDhikr.remove(entry.key);
@@ -470,12 +464,11 @@ class TasbeehStats {
   TasbeehStats clearAll() => const TasbeehStats();
 
   Map<String, dynamic> toJson() => {
-        'version': 3,
-        'lifetime': lifetime.toJson(),
-        'lifetimeByDhikr':
-            lifetimeByDhikr.map((k, v) => MapEntry(k, v.toJson())),
-        'days': days.map((k, v) => MapEntry(k, v.toJson())),
-      };
+    'version': 3,
+    'lifetime': lifetime.toJson(),
+    'lifetimeByDhikr': lifetimeByDhikr.map((k, v) => MapEntry(k, v.toJson())),
+    'days': days.map((k, v) => MapEntry(k, v.toJson())),
+  };
 
   factory TasbeehStats.fromJson(Map<String, dynamic> json) {
     final version = (json['version'] as num?)?.toInt() ?? 0;
@@ -536,4 +529,3 @@ class TasbeehStats {
     );
   }
 }
-

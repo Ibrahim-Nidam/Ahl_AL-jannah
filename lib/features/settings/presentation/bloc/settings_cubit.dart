@@ -74,7 +74,9 @@ class SettingsCubit extends Cubit<SettingsState> {
   Future<void> setThemeMode(AppThemeMode themeMode) async {
     final currentState = state;
     if (currentState is SettingsLoadSuccess) {
-      await updateSettings(currentState.settings.copyWith(themeMode: themeMode));
+      await updateSettings(
+        currentState.settings.copyWith(themeMode: themeMode),
+      );
     }
   }
 
@@ -90,7 +92,9 @@ class SettingsCubit extends Cubit<SettingsState> {
   Future<void> setQuranFont(QuranFont quranFont) async {
     final currentState = state;
     if (currentState is SettingsLoadSuccess) {
-      await updateSettings(currentState.settings.copyWith(quranFont: quranFont));
+      await updateSettings(
+        currentState.settings.copyWith(quranFont: quranFont),
+      );
     }
   }
 
@@ -99,6 +103,15 @@ class SettingsCubit extends Cubit<SettingsState> {
     if (currentState is SettingsLoadSuccess) {
       await updateSettings(
         currentState.settings.copyWith(quranRiwaya: quranRiwaya),
+      );
+    }
+  }
+
+  Future<void> setArabicFontSize(double arabicFontSize) async {
+    final currentState = state;
+    if (currentState is SettingsLoadSuccess) {
+      await updateSettings(
+        currentState.settings.copyWith(arabicFontSize: arabicFontSize),
       );
     }
   }
@@ -115,7 +128,9 @@ class SettingsCubit extends Cubit<SettingsState> {
   Future<void> setAdhanType(AdhanType adhanType) async {
     final currentState = state;
     if (currentState is SettingsLoadSuccess) {
-      await updateSettings(currentState.settings.copyWith(adhanType: adhanType));
+      await updateSettings(
+        currentState.settings.copyWith(adhanType: adhanType),
+      );
     }
   }
 

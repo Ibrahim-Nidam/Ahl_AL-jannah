@@ -22,7 +22,7 @@ enum AppColorPalette { classic, ocean, desert }
 /// registering it in `pubspec.yaml`, (2) adding an enum case here with
 /// its `fontFamily`/`fontFamilyFallback` in [QuranFontX] below. No other
 /// file needs to change.
-enum QuranFont { uthmanic }
+enum QuranFont { uthmanic, uthmanicHafs }
 
 /// Maps each [QuranFont] to its concrete font family + fallback chain.
 /// Kept next to the enum (not in `core/theme`) so `core/theme` never has
@@ -32,12 +32,15 @@ extension QuranFontX on QuranFont {
     switch (this) {
       case QuranFont.uthmanic:
         return 'Lateef';
+      case QuranFont.uthmanicHafs:
+        return 'UthmanicHafs';
     }
   }
 
   List<String> get fontFamilyFallback {
     switch (this) {
       case QuranFont.uthmanic:
+      case QuranFont.uthmanicHafs:
         return const ['Noto Naskh Arabic', 'Scheherazade New', 'Arial'];
     }
   }
@@ -74,6 +77,12 @@ class SettingsEntity {
   final QuranFont quranFont;
   final QuranRiwaya quranRiwaya;
 
+  /// Arabic reading font size (px) shared by the Quran reader, Hadith
+  /// pages, and Adhkar/Tasbeeh pages. Kept on the app-wide settings so the
+  /// control lives on the Settings page and all three features read the
+  /// same value.
+  final double arabicFontSize;
+
   // ── Notifications ──
   final bool notificationsEnabled;
   final AdhanType adhanType;
@@ -101,6 +110,7 @@ class SettingsEntity {
     required this.colorPalette,
     required this.quranFont,
     required this.quranRiwaya,
+    required this.arabicFontSize,
     required this.notificationsEnabled,
     required this.adhanType,
     required this.morningAdhkarReminderEnabled,
@@ -120,8 +130,9 @@ class SettingsEntity {
       language: AppLanguage.system,
       themeMode: AppThemeMode.system,
       colorPalette: AppColorPalette.classic,
-      quranFont: QuranFont.uthmanic,
+      quranFont: QuranFont.uthmanicHafs,
       quranRiwaya: QuranRiwaya.hafsAnAsim,
+      arabicFontSize: 28.0,
       notificationsEnabled: true,
       adhanType: AdhanType.full,
       morningAdhkarReminderEnabled: true,
@@ -139,6 +150,7 @@ class SettingsEntity {
     AppColorPalette? colorPalette,
     QuranFont? quranFont,
     QuranRiwaya? quranRiwaya,
+    double? arabicFontSize,
     bool? notificationsEnabled,
     AdhanType? adhanType,
     bool? morningAdhkarReminderEnabled,
@@ -154,6 +166,7 @@ class SettingsEntity {
       colorPalette: colorPalette ?? this.colorPalette,
       quranFont: quranFont ?? this.quranFont,
       quranRiwaya: quranRiwaya ?? this.quranRiwaya,
+      arabicFontSize: arabicFontSize ?? this.arabicFontSize,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       adhanType: adhanType ?? this.adhanType,
       morningAdhkarReminderEnabled:
@@ -163,8 +176,8 @@ class SettingsEntity {
       vibrationsEnabled: vibrationsEnabled ?? this.vibrationsEnabled,
       keepScreenAwake: keepScreenAwake ?? this.keepScreenAwake,
       tasbeehVibrateOnTap: tasbeehVibrateOnTap ?? this.tasbeehVibrateOnTap,
-      tasbeehStrongVibrateOnComplete: tasbeehStrongVibrateOnComplete ??
-          this.tasbeehStrongVibrateOnComplete,
+      tasbeehStrongVibrateOnComplete:
+          tasbeehStrongVibrateOnComplete ?? this.tasbeehStrongVibrateOnComplete,
     );
   }
 }

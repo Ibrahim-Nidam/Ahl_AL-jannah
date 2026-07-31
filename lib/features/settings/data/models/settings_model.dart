@@ -12,6 +12,7 @@ class SettingsModel extends SettingsEntity {
     required super.colorPalette,
     required super.quranFont,
     required super.quranRiwaya,
+    required super.arabicFontSize,
     required super.notificationsEnabled,
     required super.adhanType,
     required super.morningAdhkarReminderEnabled,
@@ -31,6 +32,7 @@ class SettingsModel extends SettingsEntity {
       colorPalette: entity.colorPalette,
       quranFont: entity.quranFont,
       quranRiwaya: entity.quranRiwaya,
+      arabicFontSize: entity.arabicFontSize,
       notificationsEnabled: entity.notificationsEnabled,
       adhanType: entity.adhanType,
       morningAdhkarReminderEnabled: entity.morningAdhkarReminderEnabled,
@@ -79,16 +81,22 @@ class SettingsModel extends SettingsEntity {
         json['quranRiwaya'] as String?,
         defaults.quranRiwaya,
       ),
+      arabicFontSize:
+          (json['arabicFontSize'] as num?)?.toDouble() ??
+          defaults.arabicFontSize,
       notificationsEnabled:
-          json['notificationsEnabled'] as bool? ?? defaults.notificationsEnabled,
+          json['notificationsEnabled'] as bool? ??
+          defaults.notificationsEnabled,
       adhanType: _enumFromName(
         AdhanType.values,
         json['adhanType'] as String?,
         defaults.adhanType,
       ),
-      morningAdhkarReminderEnabled: json['morningAdhkarReminderEnabled'] as bool? ??
+      morningAdhkarReminderEnabled:
+          json['morningAdhkarReminderEnabled'] as bool? ??
           defaults.morningAdhkarReminderEnabled,
-      eveningAdhkarReminderEnabled: json['eveningAdhkarReminderEnabled'] as bool? ??
+      eveningAdhkarReminderEnabled:
+          json['eveningAdhkarReminderEnabled'] as bool? ??
           defaults.eveningAdhkarReminderEnabled,
       vibrationsEnabled:
           json['vibrationsEnabled'] as bool? ?? defaults.vibrationsEnabled,
@@ -98,7 +106,7 @@ class SettingsModel extends SettingsEntity {
           json['tasbeehVibrateOnTap'] as bool? ?? defaults.tasbeehVibrateOnTap,
       tasbeehStrongVibrateOnComplete:
           json['tasbeehStrongVibrateOnComplete'] as bool? ??
-              defaults.tasbeehStrongVibrateOnComplete,
+          defaults.tasbeehStrongVibrateOnComplete,
     );
   }
 
@@ -109,6 +117,7 @@ class SettingsModel extends SettingsEntity {
       'colorPalette': colorPalette.name,
       'quranFont': quranFont.name,
       'quranRiwaya': quranRiwaya.name,
+      'arabicFontSize': arabicFontSize,
       'notificationsEnabled': notificationsEnabled,
       'adhanType': adhanType.name,
       'morningAdhkarReminderEnabled': morningAdhkarReminderEnabled,
