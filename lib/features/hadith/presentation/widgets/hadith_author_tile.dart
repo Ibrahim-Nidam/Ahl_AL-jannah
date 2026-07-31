@@ -1,26 +1,26 @@
-import 'package:ahl_jannah/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/entities/hadith_entities.dart';
 
-class HadithCollectionTile extends StatelessWidget {
-  const HadithCollectionTile({
+/// Card for a Hadith author (collection) on the authors page.
+class HadithAuthorTile extends StatelessWidget {
+  const HadithAuthorTile({
     super.key,
-    required this.collection,
+    required this.author,
     required this.onTap,
   });
 
-  final HadithCollectionMeta collection;
+  final HadithAuthorMeta author;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
-    final title = collection.titleFor(Localizations.localeOf(context).languageCode);
+    final languageCode = Localizations.localeOf(context).languageCode;
+    final title = author.titleFor(languageCode);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -66,43 +66,13 @@ class HadithCollectionTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.format_list_numbered_rounded,
-                          size: 14,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          l10n.hadithCollectionCount(collection.count),
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        if (collection.attribution != null) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 3,
-                            height: 3,
-                            decoration: BoxDecoration(
-                              color: colorScheme.onSurfaceVariant,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              collection.attribution!,
-                              style: AppTextStyles.bodySmall.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ],
+                    Text(
+                      author.subtitleFor(languageCode),
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),

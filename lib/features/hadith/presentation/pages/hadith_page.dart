@@ -6,15 +6,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injection.dart';
 import '../bloc/hadith_cubit.dart';
-import '../widgets/hadith_collection_tile.dart';
-import '../widgets/hadith_item_tile.dart';
+import '../widgets/hadith_author_tile.dart';
+import '../widgets/hadith_search_field.dart';
+import '../widgets/hadith_search_result_tile.dart';
+import 'hadith_books_page.dart';
 import 'hadith_collection_page.dart';
 
-/// Catalog of every bundled Hadith collection, with a search bar that
-/// searches **globally** across all collections. Collections are
-/// discovered automatically from `assets/hadith/*.json` — see
-/// [HadithLocalDataSourceImpl] — so dropping a new correctly-shaped JSON
-/// file there is enough for it to appear here without any code change.
+/// Lists the bundled Hadith authors (collections). Tapping one opens its
+/// books — see [HadithBooksPage]. A search field at the top queries every
+/// collection at once via [HadithCubit.searchAll].
 class HadithPage extends StatefulWidget {
   const HadithPage({super.key});
 
@@ -26,13 +26,12 @@ class _HadithPageState extends State<HadithPage> {
   late final HadithCubit _cubit;
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
-  bool _searching = false;
 
   @override
   void initState() {
     super.initState();
     _cubit = getIt<HadithCubit>();
-    _cubit.loadCatalog();
+    _cubit.loadAuthors();
   }
 
   @override
@@ -43,55 +42,29 @@ class _HadithPageState extends State<HadithPage> {
     super.dispose();
   }
 
-  void _onQueryChanged(String value) {
+  void _onSearchChanged(String value) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 350), () {
-      _cubit.search(value);
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) _cubit.searchAll(value);
     });
   }
 
-  void _closeSearch() {
+  void _clearSearch() {
     _debounce?.cancel();
     _searchController.clear();
-    setState(() => _searching = false);
-    _cubit.loadCatalog();
+    _cubit.searchAll('');
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorScheme = Theme.of(context).colorScheme;
+    final languageCode = Localizations.localeOf(context).languageCode;
 
     return BlocProvider.value(
       value: _cubit,
       child: Scaffold(
-        appBar: AppBar(
-          title: _searching
-              ? TextField(
-                  controller: _searchController,
-                  autofocus: true,
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    hintText: l10n.hadithSearchHint,
-                    border: InputBorder.none,
-                  ),
-                  onChanged: _onQueryChanged,
-                )
-              : Text(l10n.hadithTileTitle),
-          actions: [
-            IconButton(
-              icon: Icon(_searching ? Icons.close_rounded : Icons.search_rounded),
-              onPressed: () {
-                if (_searching) {
-                  _closeSearch();
-                } else {
-                  setState(() => _searching = true);
-                }
-              },
-            ),
-          ],
-        ),
+        appBar: AppBar(title: Text(l10n.hadithPageTitle)),
         body: BlocBuilder<HadithCubit, HadithState>(
           builder: (context, state) {
             if (state is HadithLoading || state is HadithInitial) {
@@ -105,57 +78,115 @@ class _HadithPageState extends State<HadithPage> {
               );
             }
             if (state is HadithSearchLoaded) {
-              if (state.results.isEmpty) {
-                return _EmptyState(
-                  icon: Icons.search_off_rounded,
-                  message: l10n.hadithNoResults,
-                  color: colorScheme.onSurfaceVariant,
-                );
-              }
-              final languageCode = Localizations.localeOf(context).languageCode;
-              return ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: state.results.length,
-                itemBuilder: (context, index) {
-                  final result = state.results[index];
-                  return HadithItemTile(
-                    hadith: result.hadith,
-                    collectionTitle: result.titleFor(languageCode),
-                    isDark: isDark,
-                  );
-                },
+              return Column(
+                children: [
+                  HadithSearchField(
+                    controller: _searchController,
+                    hintText: l10n.hadithGlobalSearchHint,
+                    onChanged: _onSearchChanged,
+                    onClear: _clearSearch,
+                  ),
+                  Expanded(child: _buildSearchResults(state, l10n, colorScheme, languageCode)),
+                ],
               );
             }
-            if (state is HadithCatalogLoaded) {
-              if (state.collections.isEmpty) {
-                return _EmptyState(
-                  icon: Icons.library_books_outlined,
-                  message: l10n.hadithNoCollections,
-                  color: colorScheme.onSurfaceVariant,
-                );
-              }
-              return ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: state.collections.length,
-                itemBuilder: (context, index) {
-                  final collection = state.collections[index];
-                  return HadithCollectionTile(
-                    collection: collection,
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => HadithCollectionPage(collection: collection),
-                        ),
-                      );
-                    },
-                  );
-                },
+            if (state is HadithAuthorsLoaded) {
+              return Column(
+                children: [
+                  HadithSearchField(
+                    controller: _searchController,
+                    hintText: l10n.hadithGlobalSearchHint,
+                    onChanged: _onSearchChanged,
+                    onClear: _clearSearch,
+                  ),
+                  Expanded(
+                    child: state.authors.isEmpty
+                        ? _EmptyState(
+                            icon: Icons.library_books_outlined,
+                            message: l10n.hadithNoCollections,
+                            color: colorScheme.onSurfaceVariant,
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            itemCount: state.authors.length,
+                            itemBuilder: (context, index) {
+                              final author = state.authors[index];
+                              return HadithAuthorTile(
+                                author: author,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => HadithBooksPage(author: author),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
               );
             }
             return const SizedBox.shrink();
           },
         ),
       ),
+    );
+  }
+
+  Widget _buildSearchResults(
+    HadithSearchLoaded state,
+    AppLocalizations l10n,
+    ColorScheme colorScheme,
+    String languageCode,
+  ) {
+    if (state.searching) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (state.results.isEmpty) {
+      return _EmptyState(
+        icon: Icons.search_off_rounded,
+        message: l10n.hadithNoResults,
+        color: colorScheme.onSurfaceVariant,
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
+          child: Text(
+            l10n.hadithSearchResultCount(state.results.length),
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.only(bottom: 12),
+            itemCount: state.results.length,
+            itemBuilder: (context, index) {
+              final result = state.results[index];
+              return HadithSearchResultTile(
+                result: result,
+                languageCode: languageCode,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => HadithCollectionPage(
+                        author: result.author,
+                        book: result.book,
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
