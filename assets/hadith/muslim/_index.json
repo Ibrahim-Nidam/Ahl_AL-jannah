@@ -1,0 +1,290 @@
+{
+ "collection": "muslim",
+ "books": [
+  {
+   "id": "001_the_book_of_faith",
+   "title": "1 The Book of Faith كتاب الإيمان",
+   "count": 439
+  },
+  {
+   "id": "002_the_book_of_purification",
+   "title": "2 The Book of Purification كتاب الطهارة",
+   "count": 144
+  },
+  {
+   "id": "003_the_book_of_menstruation",
+   "title": "3 The Book of Menstruation كتاب الحيض",
+   "count": 157
+  },
+  {
+   "id": "004_the_book_of_prayers",
+   "title": "4 The Book of Prayers كتاب الصلاة",
+   "count": 322
+  },
+  {
+   "id": "005_the_book_of_mosques_and_places_of_prayer",
+   "title": "5 The Book of Mosques and Places of Prayer كتاب الْمَسَاجِدِ وَمَوَاضِعِ الصَّلاَةِ",
+   "count": 402
+  },
+  {
+   "id": "006_the_book_of_prayer_-_travellers",
+   "title": "6 The Book of Prayer - Travellers كتاب صلاة المسافرين وقصرها",
+   "count": 378
+  },
+  {
+   "id": "007_the_book_of_prayer_-_friday",
+   "title": "7 The Book of Prayer - Friday كتاب الجمعة",
+   "count": 93
+  },
+  {
+   "id": "008_the_book_of_prayer_-_two_eids",
+   "title": "8 The Book of Prayer - Two Eids كتاب صلاة العيدين",
+   "count": 24
+  },
+  {
+   "id": "009_the_book_of_prayer_-_rain",
+   "title": "9 The Book of Prayer - Rain كتاب صلاة الاستسقاء‏",
+   "count": 19
+  },
+  {
+   "id": "010_the_book_of_prayer_-_eclipses",
+   "title": "10 The Book of Prayer - Eclipses كتاب الكسوف",
+   "count": 31
+  },
+  {
+   "id": "011_the_book_of_prayer_-_funerals",
+   "title": "11 The Book of Prayer - Funerals كتاب الجنائز",
+   "count": 138
+  },
+  {
+   "id": "012_the_book_of_zakat",
+   "title": "12 The Book of Zakat كتاب الزكاة",
+   "count": 231
+  },
+  {
+   "id": "013_the_book_of_fasting",
+   "title": "13 The Book of Fasting كتاب الصيام",
+   "count": 285
+  },
+  {
+   "id": "014_the_book_of_itikaf",
+   "title": "14 The Book of I'tikaf كتاب الاعتكاف",
+   "count": 11
+  },
+  {
+   "id": "015_the_book_of_pilgrimage",
+   "title": "15 The Book of Pilgrimage كتاب الحج",
+   "count": 601
+  },
+  {
+   "id": "016_the_book_of_marriage",
+   "title": "16 The Book of Marriage كتاب النكاح",
+   "count": 169
+  },
+  {
+   "id": "017_the_book_of_suckling",
+   "title": "17 The Book of Suckling كتاب الرضاع",
+   "count": 84
+  },
+  {
+   "id": "018_the_book_of_divorce",
+   "title": "18 The Book of Divorce كتاب الطلاق",
+   "count": 87
+  },
+  {
+   "id": "019_the_book_of_invoking_curses",
+   "title": "19 The Book of Invoking Curses كتاب اللعان",
+   "count": 27
+  },
+  {
+   "id": "020_the_book_of_emancipating_slaves",
+   "title": "20 The Book of Emancipating Slaves كتاب العتق",
+   "count": 30
+  },
+  {
+   "id": "021_the_book_of_transactions",
+   "title": "21 The Book of Transactions كتاب البيوع",
+   "count": 160
+  },
+  {
+   "id": "022_the_book_of_musaqah",
+   "title": "22 The Book of Musaqah كتاب المساقاة",
+   "count": 178
+  },
+  {
+   "id": "023_the_book_of_the_rules_of_inheritance",
+   "title": "23 The Book of the Rules of Inheritance كتاب الفرائض",
+   "count": 23
+  },
+  {
+   "id": "024_the_book_of_gifts",
+   "title": "24 The Book of Gifts كتاب الهبات",
+   "count": 41
+  },
+  {
+   "id": "025_the_book_of_wills",
+   "title": "25 The Book of Wills كتاب الوصية",
+   "count": 31
+  },
+  {
+   "id": "026_the_book_of_vows",
+   "title": "26 The Book of Vows كتاب النذر",
+   "count": 18
+  },
+  {
+   "id": "027_the_book_of_oaths",
+   "title": "27 The Book of Oaths كتاب الأيمان",
+   "count": 88
+  },
+  {
+   "id": "028_the_book_of_oaths_muharibin__qasas_retaliation_and_diyat_blood_money",
+   "title": "28 The Book of Oaths, Muharibin , Qasas (Retaliation), and Diyat (Blood Money) كتاب القسامة والمحاربين والقصاص والديات",
+   "count": 56
+  },
+  {
+   "id": "029_the_book_of_legal_punishments",
+   "title": "29 The Book of Legal Punishments كتاب الحدود",
+   "count": 72
+  },
+  {
+   "id": "030_the_book_of_judicial_decisions",
+   "title": "30 The Book of Judicial Decisions كتاب الأقضية",
+   "count": 28
+  },
+  {
+   "id": "031_the_book_of_lost_property",
+   "title": "31 The Book of Lost Property كتاب اللقطة",
+   "count": 20
+  },
+  {
+   "id": "032_the_book_of_jihad_and_expeditions",
+   "title": "32 The Book of Jihad and Expeditions كتاب الجهاد والسير",
+   "count": 182
+  },
+  {
+   "id": "033_the_book_on_government",
+   "title": "33 The Book on Government كتاب الإمارة",
+   "count": 266
+  },
+  {
+   "id": "034_the_book_of_hunting_slaughter_and_what_may_be_eaten",
+   "title": "34 The Book of Hunting, Slaughter, and what may be Eaten كتاب الصيد والذبائح وما يؤكل من الحيوان",
+   "count": 92
+  },
+  {
+   "id": "035_the_book_of_sacrifices",
+   "title": "35 The Book of Sacrifices كتاب الأضاحى",
+   "count": 62
+  },
+  {
+   "id": "036_the_book_of_drinks",
+   "title": "36 The Book of Drinks كتاب الأشربة",
+   "count": 257
+  },
+  {
+   "id": "037_the_book_of_clothes_and_adornment",
+   "title": "37 The Book of Clothes and Adornment كتاب اللباس والزينة",
+   "count": 193
+  },
+  {
+   "id": "038_the_book_of_manners_and_etiquette",
+   "title": "38 The Book of Manners and Etiquette كتاب الآداب",
+   "count": 60
+  },
+  {
+   "id": "039_the_book_of_greetings",
+   "title": "39 The Book of Greetings كتاب السلام",
+   "count": 212
+  },
+  {
+   "id": "040_the_book_concerning_the_use_of_correct_words",
+   "title": "40 The Book Concerning the Use of Correct Words كتاب الألفاظ من الأدب وغيرها",
+   "count": 23
+  },
+  {
+   "id": "041_the_book_of_poetry",
+   "title": "41 The Book of Poetry كتاب الشعر",
+   "count": 11
+  },
+  {
+   "id": "042_the_book_of_dreams",
+   "title": "42 The Book of Dreams كتاب الرؤيا",
+   "count": 41
+  },
+  {
+   "id": "043_the_book_of_virtues",
+   "title": "43 The Book of Virtues كتاب الفضائل",
+   "count": 226
+  },
+  {
+   "id": "044_the_book_of_the_merits_of_the_companions",
+   "title": "44 The Book of the Merits of the Companions كتاب فضائل الصحابة رضى الله تعالى عنهم",
+   "count": 328
+  },
+  {
+   "id": "045_the_book_of_virtue_enjoining_good_manners_and_joining_of_the_ties_of_kinship",
+   "title": "45 The Book of Virtue, Enjoining Good Manners, and Joining of the Ties of Kinship كتاب البر والصلة والآداب",
+   "count": 217
+  },
+  {
+   "id": "046_the_book_of_destiny",
+   "title": "46 The Book of Destiny كتاب القدر",
+   "count": 52
+  },
+  {
+   "id": "047_the_book_of_knowledge",
+   "title": "47 The Book of Knowledge كتاب العلم",
+   "count": 30
+  },
+  {
+   "id": "048_the_book_pertaining_to_the_remembrance_of_allah_supplication_repentance_and_seeking_forgiveness",
+   "title": "48 The Book Pertaining to the Remembrance of Allah, Supplication, Repentance and Seeking Forgiveness كتاب الذكر والدعاء والتوبة والاستغفار",
+   "count": 127
+  },
+  {
+   "id": "049_the_book_of_heart-melting_traditions",
+   "title": "49 The Book of Heart-Melting Traditions كتاب الرقاق",
+   "count": 15
+  },
+  {
+   "id": "050_the_book_of_repentance",
+   "title": "50 The Book of Repentance كتاب التوبة",
+   "count": 68
+  },
+  {
+   "id": "051_characteristics_of_the_hypocrites_and_rulings_concerning_them",
+   "title": "51 Characteristics of The Hypocrites And Rulings Concerning Them كتاب صفات المنافقين وأحكامهم",
+   "count": 21
+  },
+  {
+   "id": "052_characteristics_of_the_day_of_judgment_paradise_and_hell",
+   "title": "52 Characteristics of the Day of Judgment, Paradise, and Hell كتاب صفة القيامة والجنة والنار",
+   "count": 82
+  },
+  {
+   "id": "053_the_book_of_paradise_its_description_its_bounties_and_its_inhabitants",
+   "title": "53 The Book of Paradise, its Description, its Bounties and its Inhabitants كتاب الجنة وصفة نعيمها وأهلها",
+   "count": 103
+  },
+  {
+   "id": "054_the_book_of_tribulations_and_portents_of_the_last_hour",
+   "title": "54 The Book of Tribulations and Portents of the Last Hour كتاب الفتن وأشراط الساعة",
+   "count": 177
+  },
+  {
+   "id": "055_the_book_of_zuhd_and_softening_of_hearts",
+   "title": "55 The Book of Zuhd and Softening of Hearts كتاب الزهد والرقائق",
+   "count": 96
+  },
+  {
+   "id": "056_the_book_of_commentary_on_the_quran",
+   "title": "56 The Book of Commentary on the Qur'an كتاب التفسير",
+   "count": 40
+  },
+  {
+   "id": "introduction",
+   "title": "Introduction المقدمة",
+   "count": 91
+  }
+ ]
+}

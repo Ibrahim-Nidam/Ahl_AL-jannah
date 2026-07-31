@@ -1,0 +1,10 @@
+{
+ "collection": "forty_qudsi",
+ "books": [
+  {
+   "id": "book",
+   "title": "Forty Hadith Qudsi الحديث القدسي",
+   "count": 40
+  }
+ ]
+}

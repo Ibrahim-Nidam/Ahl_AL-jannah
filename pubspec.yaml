@@ -90,7 +90,10 @@ flutter:
     - assets/adhkar_catalog.meta.json
     - assets/kaaba_icon.png
     - assets/app_icon.png
-    - assets/hadith/
+    - assets/hadith/bukhari/
+    - assets/hadith/muslim/
+    - assets/hadith/forty_nawawi/
+    - assets/hadith/forty_qudsi/
 
   fonts:
     - family: Lateef
@@ -98,3 +101,6 @@ flutter:
         - asset: assets/fonts/Lateef-Regular.ttf
         - asset: assets/fonts/Lateef-Bold.ttf
           weight: 700
+    - family: UthmanicHafs
+      fonts:
+        - asset: assets/fonts/uthmanic-hafs-v22.ttf

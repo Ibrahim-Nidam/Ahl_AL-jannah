@@ -1,0 +1,490 @@
+{
+ "collection": "bukhari",
+ "books": [
+  {
+   "id": "001_revelation",
+   "title": "1 Revelation كتاب بدء الوحى",
+   "count": 7
+  },
+  {
+   "id": "002_belief",
+   "title": "2 Belief كتاب الإيمان",
+   "count": 51
+  },
+  {
+   "id": "003_knowledge",
+   "title": "3 Knowledge كتاب العلم",
+   "count": 76
+  },
+  {
+   "id": "004_ablutions_wudu",
+   "title": "4 Ablutions (Wudu') كتاب الوضوء",
+   "count": 113
+  },
+  {
+   "id": "005_bathing_ghusl",
+   "title": "5 Bathing (Ghusl) كتاب الغسل",
+   "count": 45
+  },
+  {
+   "id": "006_menstrual_periods",
+   "title": "6 Menstrual Periods كتاب الحيض",
+   "count": 37
+  },
+  {
+   "id": "007_rubbing_hands_and_feet_with_dust_tayammum",
+   "title": "7 Rubbing hands and feet with dust (Tayammum) كتاب التيمم",
+   "count": 15
+  },
+  {
+   "id": "008_prayers_salat",
+   "title": "8 Prayers (Salat) كتاب الصلاة",
+   "count": 167
+  },
+  {
+   "id": "009_times_of_the_prayers",
+   "title": "9 Times of the Prayers كتاب مواقيت الصلاة",
+   "count": 77
+  },
+  {
+   "id": "010_call_to_prayers_adhaan",
+   "title": "10 Call to Prayers (Adhaan) كتاب الأذان",
+   "count": 266
+  },
+  {
+   "id": "011_friday_prayer",
+   "title": "11 Friday Prayer كتاب الجمعة",
+   "count": 65
+  },
+  {
+   "id": "012_fear_prayer",
+   "title": "12 Fear Prayer كتاب صلاة الخوف",
+   "count": 6
+  },
+  {
+   "id": "013_the_two_festivals_eids",
+   "title": "13 The Two Festivals (Eids) كتاب العيدين",
+   "count": 37
+  },
+  {
+   "id": "014_witr_prayer",
+   "title": "14 Witr Prayer كتاب الوتر",
+   "count": 15
+  },
+  {
+   "id": "015_invoking_allah_for_rain_istisqaa",
+   "title": "15 Invoking Allah for Rain (Istisqaa) كتاب الاستسقاء",
+   "count": 34
+  },
+  {
+   "id": "016_eclipses",
+   "title": "16 Eclipses كتاب الكسوف",
+   "count": 24
+  },
+  {
+   "id": "017_prostration_during_recital_of_quran",
+   "title": "17 Prostration During Recital of Qur'an كتاب سجود القرآن",
+   "count": 13
+  },
+  {
+   "id": "018_shortening_the_prayers_at-taqseer",
+   "title": "18 Shortening the Prayers (At-Taqseer) كتاب التقصير",
+   "count": 39
+  },
+  {
+   "id": "019_prayer_at_night_tahajjud",
+   "title": "19 Prayer at Night (Tahajjud) كتاب التهجد",
+   "count": 63
+  },
+  {
+   "id": "020_virtues_of_prayer_at_masjid_makkah_and_madinah",
+   "title": "20 Virtues of Prayer at Masjid Makkah and Madinah كتاب فضل الصلاة فى مسجد مكة والمدينة",
+   "count": 9
+  },
+  {
+   "id": "021_actions_while_praying",
+   "title": "21 Actions while Praying كتاب العمل فى الصلاة",
+   "count": 27
+  },
+  {
+   "id": "022_forgetfulness_in_prayer",
+   "title": "22 Forgetfulness in Prayer كتاب السهو",
+   "count": 14
+  },
+  {
+   "id": "023_funerals_al-janaaiz",
+   "title": "23 Funerals (Al-Janaa'iz) كتاب الجنائز",
+   "count": 148
+  },
+  {
+   "id": "024_obligatory_charity_tax_zakat",
+   "title": "24 Obligatory Charity Tax (Zakat) كتاب الزكاة",
+   "count": 112
+  },
+  {
+   "id": "025_hajj_pilgrimage",
+   "title": "25 Hajj (Pilgrimage) كتاب الحج",
+   "count": 247
+  },
+  {
+   "id": "026_umrah_minor_pilgrimage",
+   "title": "26 `Umrah (Minor pilgrimage) كتاب العمرة",
+   "count": 30
+  },
+  {
+   "id": "027_pilgrims_prevented_from_completing_the_pilgrimage",
+   "title": "27 Pilgrims Prevented from Completing the Pilgrimage كتاب المحصر",
+   "count": 15
+  },
+  {
+   "id": "028_penalty_of_hunting_while_on_pilgrimage",
+   "title": "28 Penalty of Hunting while on Pilgrimage كتاب جزاء الصيد",
+   "count": 46
+  },
+  {
+   "id": "029_virtues_of_madinah",
+   "title": "29 Virtues of Madinah كتاب فضائل المدينة",
+   "count": 24
+  },
+  {
+   "id": "030_fasting",
+   "title": "30 Fasting كتاب الصوم",
+   "count": 112
+  },
+  {
+   "id": "031_praying_at_night_in_ramadaan_taraweeh",
+   "title": "31 Praying at Night in Ramadaan (Taraweeh) كتاب صلاة التراويح",
+   "count": 6
+  },
+  {
+   "id": "032_virtues_of_the_night_of_qadr",
+   "title": "32 Virtues of the Night of Qadr كتاب فضل ليلة القدر",
+   "count": 11
+  },
+  {
+   "id": "033_retiring_to_a_mosque_for_remembrance_of_allah_itikaf",
+   "title": "33 Retiring to a Mosque for Remembrance of Allah (I'tikaf) كتاب الاعتكاف",
+   "count": 21
+  },
+  {
+   "id": "034_sales_and_trade",
+   "title": "34 Sales and Trade كتاب البيوع",
+   "count": 184
+  },
+  {
+   "id": "035_sales_in_which_a_price_is_paid_for_goods_to_be_delivered_later_as-salam",
+   "title": "35 Sales in which a Price is paid for Goods to be Delivered Later (As-Salam) كتاب السلم",
+   "count": 16
+  },
+  {
+   "id": "036_shufa",
+   "title": "36 Shuf'a كتاب الشفعة",
+   "count": 3
+  },
+  {
+   "id": "037_hiring",
+   "title": "37 Hiring كتاب الإجارة",
+   "count": 25
+  },
+  {
+   "id": "038_transferance_of_a_debt_from_one_person_to_another_al-hawaala",
+   "title": "38 Transferance of a Debt from One Person to Another (Al-Hawaala) كتاب الحوالات",
+   "count": 3
+  },
+  {
+   "id": "039_kafalah",
+   "title": "39 Kafalah كتاب الكفالة",
+   "count": 9
+  },
+  {
+   "id": "040_representation_authorization_business_by_proxy",
+   "title": "40 Representation, Authorization, Business by Proxy كتاب الوكالة",
+   "count": 18
+  },
+  {
+   "id": "041_agriculture",
+   "title": "41 Agriculture كتاب المزارعة",
+   "count": 28
+  },
+  {
+   "id": "042_distribution_of_water",
+   "title": "42 Distribution of Water كتاب المساقاة",
+   "count": 31
+  },
+  {
+   "id": "043_loans_payment_of_loans_freezing_of_property_bankruptcy",
+   "title": "43 Loans, Payment of Loans, Freezing of Property, Bankruptcy كتاب فى الاستقراض",
+   "count": 24
+  },
+  {
+   "id": "044_khusoomaat",
+   "title": "44 Khusoomaat كتاب الخصومات",
+   "count": 15
+  },
+  {
+   "id": "045_lost_things_picked_up_by_someone_luqatah",
+   "title": "45 Lost Things Picked up by Someone (Luqatah) كتاب فى اللقطة",
+   "count": 15
+  },
+  {
+   "id": "046_oppressions",
+   "title": "46 Oppressions كتاب المظالم",
+   "count": 43
+  },
+  {
+   "id": "047_partnership",
+   "title": "47 Partnership كتاب الشركة",
+   "count": 22
+  },
+  {
+   "id": "048_mortgaging",
+   "title": "48 Mortgaging كتاب الرهن",
+   "count": 8
+  },
+  {
+   "id": "049_manumission_of_slaves",
+   "title": "49 Manumission of Slaves كتاب العتق",
+   "count": 41
+  },
+  {
+   "id": "050_makaatib",
+   "title": "50 Makaatib كتاب المكاتب",
+   "count": 6
+  },
+  {
+   "id": "051_gifts",
+   "title": "51 Gifts كتاب الهبة وفضلها والتحريض عليها",
+   "count": 68
+  },
+  {
+   "id": "052_witnesses",
+   "title": "52 Witnesses كتاب الشهادات",
+   "count": 50
+  },
+  {
+   "id": "053_peacemaking",
+   "title": "53 Peacemaking كتاب الصلح",
+   "count": 20
+  },
+  {
+   "id": "054_conditions",
+   "title": "54 Conditions كتاب الشروط",
+   "count": 24
+  },
+  {
+   "id": "055_wills_and_testaments_wasaayaa",
+   "title": "55 Wills and Testaments (Wasaayaa) كتاب الوصايا",
+   "count": 44
+  },
+  {
+   "id": "056_fighting_for_the_cause_of_allah_jihaad",
+   "title": "56 Fighting for the Cause of Allah (Jihaad) كتاب الجهاد والسير",
+   "count": 294
+  },
+  {
+   "id": "057_one-fifth_of_booty_to_the_cause_of_allah_khumus",
+   "title": "57 One-fifth of Booty to the Cause of Allah (Khumus) كتاب فرض الخمس",
+   "count": 63
+  },
+  {
+   "id": "058_jizyah_and_mawaadaah",
+   "title": "58 Jizyah and Mawaada'ah كتاب الجزية والموادعة",
+   "count": 30
+  },
+  {
+   "id": "059_beginning_of_creation",
+   "title": "59 Beginning of Creation كتاب بدء الخلق",
+   "count": 131
+  },
+  {
+   "id": "060_prophets",
+   "title": "60 Prophets كتاب أحاديث الأنبياء",
+   "count": 154
+  },
+  {
+   "id": "061_virtues_and_merits_of_the_prophet_pbuh_and_his_companions",
+   "title": "61 Virtues and Merits of the Prophet (pbuh) and his Companions كتاب المناقب",
+   "count": 151
+  },
+  {
+   "id": "062_companions_of_the_prophet",
+   "title": "62 Companions of the Prophet كتاب فضائل أصحاب النبى صلى الله عليه وسلم",
+   "count": 120
+  },
+  {
+   "id": "063_merits_of_the_helpers_in_madinah_ansaar",
+   "title": "63 Merits of the Helpers in Madinah (Ansaar) كتاب مناقب الأنصار",
+   "count": 172
+  },
+  {
+   "id": "064_military_expeditions_led_by_the_prophet_pbuh_al-maghaazi",
+   "title": "64 Military Expeditions led by the Prophet (pbuh) (Al-Maghaazi) كتاب المغازى",
+   "count": 488
+  },
+  {
+   "id": "065_prophetic_commentary_on_the_quran_tafseer_of_the_prophet_pbuh",
+   "title": "65 Prophetic Commentary on the Qur'an (Tafseer of the Prophet (pbuh)) كتاب التفسير",
+   "count": 499
+  },
+  {
+   "id": "066_virtues_of_the_quran",
+   "title": "66 Virtues of the Qur'an كتاب فضائل القرآن",
+   "count": 87
+  },
+  {
+   "id": "067_wedlock_marriage_nikaah",
+   "title": "67 Wedlock, Marriage (Nikaah) كتاب النكاح",
+   "count": 183
+  },
+  {
+   "id": "068_divorce",
+   "title": "68 Divorce كتاب الطلاق",
+   "count": 95
+  },
+  {
+   "id": "069_supporting_the_family",
+   "title": "69 Supporting the Family كتاب النفقات",
+   "count": 22
+  },
+  {
+   "id": "070_food_meals",
+   "title": "70 Food, Meals كتاب الأطعمة",
+   "count": 95
+  },
+  {
+   "id": "071_sacrifice_on_occasion_of_birth_aqiqa",
+   "title": "71 Sacrifice on Occasion of Birth (`Aqiqa) كتاب العقيقة",
+   "count": 9
+  },
+  {
+   "id": "072_hunting_slaughtering",
+   "title": "72 Hunting, Slaughtering كتاب الذبائح والصيد",
+   "count": 69
+  },
+  {
+   "id": "073_al-adha_festival_sacrifice_adaahi",
+   "title": "73 Al-Adha Festival Sacrifice (Adaahi) كتاب الأضاحي",
+   "count": 30
+  },
+  {
+   "id": "074_drinks",
+   "title": "74 Drinks كتاب الأشربة",
+   "count": 65
+  },
+  {
+   "id": "075_patients",
+   "title": "75 Patients كتاب المرضى",
+   "count": 37
+  },
+  {
+   "id": "076_medicine",
+   "title": "76 Medicine كتاب الطب",
+   "count": 93
+  },
+  {
+   "id": "077_dress",
+   "title": "77 Dress كتاب اللباس",
+   "count": 185
+  },
+  {
+   "id": "078_good_manners_and_form_al-adab",
+   "title": "78 Good Manners and Form (Al-Adab) كتاب الأدب",
+   "count": 250
+  },
+  {
+   "id": "079_asking_permission",
+   "title": "79 Asking Permission كتاب الاستئذان",
+   "count": 75
+  },
+  {
+   "id": "080_invocations",
+   "title": "80 Invocations كتاب الدعوات",
+   "count": 106
+  },
+  {
+   "id": "081_to_make_the_heart_tender_ar-riqaq",
+   "title": "81 To make the Heart Tender (Ar-Riqaq) كتاب الرقاق",
+   "count": 181
+  },
+  {
+   "id": "082_divine_will_al-qadar",
+   "title": "82 Divine Will (Al-Qadar) كتاب القدر",
+   "count": 26
+  },
+  {
+   "id": "083_oaths_and_vows",
+   "title": "83 Oaths and Vows كتاب الأيمان والنذور",
+   "count": 84
+  },
+  {
+   "id": "084_expiation_for_unfulfilled_oaths",
+   "title": "84 Expiation for Unfulfilled Oaths كتاب كفارات الأيمان",
+   "count": 15
+  },
+  {
+   "id": "085_laws_of_inheritance_al-faraaid",
+   "title": "85 Laws of Inheritance (Al-Faraa'id) كتاب الفرائض",
+   "count": 47
+  },
+  {
+   "id": "086_limits_and_punishments_set_by_allah_hudood",
+   "title": "86 Limits and Punishments set by Allah (Hudood) كتاب الحدود",
+   "count": 81
+  },
+  {
+   "id": "087_blood_money_ad-diyat",
+   "title": "87 Blood Money (Ad-Diyat) كتاب الديات",
+   "count": 55
+  },
+  {
+   "id": "088_apostates",
+   "title": "88 Apostates كتاب استتابة المرتدين والمعاندين وقتالهم",
+   "count": 21
+  },
+  {
+   "id": "089_statements_made_under_coercion",
+   "title": "89 (Statements made under) Coercion كتاب الإكراه",
+   "count": 13
+  },
+  {
+   "id": "090_tricks",
+   "title": "90 Tricks كتاب الحيل",
+   "count": 28
+  },
+  {
+   "id": "091_interpretation_of_dreams",
+   "title": "91 Interpretation of Dreams كتاب التعبير",
+   "count": 61
+  },
+  {
+   "id": "092_afflictions_and_the_end_of_the_world",
+   "title": "92 Afflictions and the End of the World كتاب الفتن",
+   "count": 83
+  },
+  {
+   "id": "093_judgments_ahkaam",
+   "title": "93 Judgments (Ahkaam) كتاب الأحكام",
+   "count": 84
+  },
+  {
+   "id": "094_wishes",
+   "title": "94 Wishes كتاب التمنى",
+   "count": 20
+  },
+  {
+   "id": "095_accepting_information_given_by_a_truthful_person",
+   "title": "95 Accepting Information Given by a Truthful Person كتاب أخبار الآحاد",
+   "count": 21
+  },
+  {
+   "id": "096_holding_fast_to_the_quran_and_sunnah",
+   "title": "96 Holding Fast to the Qur'an and Sunnah كتاب الاعتصام بالكتاب والسنة",
+   "count": 97
+  },
+  {
+   "id": "097_oneness_uniqueness_of_allah_tawheed",
+   "title": "97 Oneness, Uniqueness of Allah (Tawheed) كتاب التوحيد",
+   "count": 188
+  }
+ ]
+}
