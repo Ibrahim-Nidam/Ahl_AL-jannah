@@ -117,3 +117,55 @@ abstract final class AppDesertColors {
   static const Color divider = Color(0xFFE6D4C3);
   static const Color dividerDark = Color(0xFF3A2A2D);
 }
+
+/// Tajweed rule colors used by the Quran reader's "Show Tajweed Rules"
+/// mode. These are intentionally **fixed** and independent of the selected
+/// [AppColorPalette] / brightness so a user who learns "red = madd" keeps
+/// that association no matter which palette they switch to.
+///
+/// The hues follow the well-known Madani Mushaf coloring convention:
+/// red for elongation (madd), green for nasalization / idgham bighunnah /
+/// Colors for the tajweed highlighting. Follows the Quran Foundation
+/// (Quran.com) palette, which is red-family for the madd lengths (natural
+/// red, muttasil/munfasil red, lazim dark red, sila sughra light orange),
+/// green for the ghunnah family (ghunnah, idgham bighunnah, iqlab), teal
+/// for ikhfa, blue for qalqalah, brown for idgham bila ghunnah, gray for
+/// ikhfa shafawi, and light gray for the "not pronounced" noon/tanween of
+/// idgham and iqlab.
+abstract final class TajweedColors {
+  /// Madd tabee'i — natural 2-count elongation (red).
+  static const Color madd = Color(0xFFE53935);
+
+  /// Madd wajib muttasil — 4/5-count before a hamza in the same word.
+  static const Color maddWajib = Color(0xFFF44336);
+
+  /// Madd ja'iz munfasil — 4-count before a word-initial hamza.
+  static const Color maddJaiz = Color(0xFFE57373);
+
+  /// Madd lazim — 6-count (mushaddad / huruf al-muqatta'at).
+  static const Color maddLazim = Color(0xFFB71C1C);
+
+  /// Madd sila sughra — 2-count small-waw/yeh on the heh (light orange).
+  static const Color maddSilaSughra = Color(0xFFFFB74D);
+
+  /// Ghunnah, idgham bighunnah letter, idgham shafawi (green).
+  static const Color ghunnah = Color(0xFF43A047);
+
+  /// Ikhfa — concealment of noon saakinah / tanween (teal).
+  static const Color ikhfa = Color(0xFF26A69A);
+
+  /// Qalqalah — echoing letters ق ط ب ج د (blue).
+  static const Color qalqalah = Color(0xFF1E88E5);
+
+  /// Idgham bila ghunnah — merge without nasalization (ل ر) (brown).
+  static const Color idghamBilaGhunnah = Color(0xFF8D6E63);
+
+  /// Ikhfa shafawi — concealment of meem saakinah before ب (gray).
+  static const Color ikhfaShafawi = Color(0xFF78909C);
+
+  /// Iqlab — the ب following a converted noon/tanween (green).
+  static const Color iqlab = Color(0xFF43A047);
+
+  /// The unpronounced noon/tanween of idgham bighunnah and iqlab (gray).
+  static const Color notPronounced = Color(0xFF9E9E9E);
+}

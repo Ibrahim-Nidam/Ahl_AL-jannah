@@ -30,6 +30,7 @@ abstract final class AppConstants {
   static const String keyStartupPermissionsRequested =
       'startup_permissions_requested';
   static const String keyQuranReaderMode = 'quran_reader_mode';
+  static const String keyQuranShowTajweed = 'quran_show_tajweed';
   static const String keyQuranBookmarks = 'quran_bookmarks_json';
   static const String keyQuranReaderFont = 'quran_reader_font';
 
