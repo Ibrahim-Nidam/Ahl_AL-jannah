@@ -37,6 +37,9 @@
   "quranFontSectionTitle": "Quran Font",
   "quranFontSectionDescription": "Choose the Arabic font used for Quran text.",
   "quranFontUthmanicName": "Uthmanic (Lateef)",
+  "quranFontUthmanicHafsName": "Uthmanic Hafs (V22)",
+  "arabicFontSizeSectionTitle": "Arabic Font Size",
+  "arabicFontSizeSectionDescription": "Set the Arabic reading size used in the Quran, Hadith, and Adhkar.",
   "adhkarRemindersSectionTitle": "Adhkar Reminders",
   "adhkarRemindersSectionDescription": "Get reminded to recite your morning and evening Adhkar.",
   "morningAdhkarReminderOption": "Morning Adhkar Reminder",
@@ -144,6 +147,8 @@
     }
   },
   "quranShowTranslations": "Show Translations",
+  "quranShowTajweed": "Show Tajweed Rules",
+  "quranShowTajweedSubtitle": "Color-code recitation rules (madd, ghunnah, ikhfa, qalqalah…)",
   "quranTranslationLanguage": "Translation Language",
   "quranLangEnglish": "English",
   "quranLangFrench": "French",
@@ -468,10 +473,17 @@
   "tasbeehClearToday": "Clear today's stats",
   "tasbeehClearAll": "Clear all stats",
   "hadithSearchHint": "Search hadith...",
+  "hadithGlobalSearchHint": "Search all collections...",
+  "hadithBooksSearchHint": "Search books...",
+  "hadithInBookSearchHint": "Search within this book...",
+  "hadithSearchResultCount": "{count, plural, one{{count} result} other{{count} results}}",
+  "@hadithSearchResultCount": { "placeholders": { "count": { "type": "int" } } },
   "hadithNoResults": "No hadith found.",
   "hadithNoCollections": "No hadith collections found.",
   "hadithCollectionCount": "{count, plural, one{{count} hadith} other{{count} hadiths}}",
   "@hadithCollectionCount": { "placeholders": { "count": { "type": "int" } } },
   "hadithNumberLabel": "No. {number}",
-  "@hadithNumberLabel": { "placeholders": { "number": { "type": "int" } } }
+  "@hadithNumberLabel": { "placeholders": { "number": { "type": "int" } } },
+  "hadithShowTranslation": "Show translation",
+  "hadithHideTranslation": "Hide translation"
 }

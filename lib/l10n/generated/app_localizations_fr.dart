@@ -106,6 +106,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get quranFontUthmanicName => 'Uthmani (Lateef)';
 
   @override
+  String get quranFontUthmanicHafsName => 'Uthmani Hafs (V22)';
+
+  @override
+  String get arabicFontSizeSectionTitle => 'Taille de la police arabe';
+
+  @override
+  String get arabicFontSizeSectionDescription =>
+      'Définissez la taille de lecture arabe utilisée dans le Coran, le Hadith et l\'Adhkar.';
+
+  @override
   String get adhkarRemindersSectionTitle => 'Rappels d\'Adhkar';
 
   @override
@@ -302,6 +312,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get quranShowTranslations => 'Afficher les traductions';
+
+  @override
+  String get quranShowTajweed => 'Afficher les règles de tajwid';
+
+  @override
+  String get quranShowTajweedSubtitle =>
+      'Colorer les règles de récitation (madd, ghunnah, ikhfa, qalqalah…)';
 
   @override
   String get quranTranslationLanguage => 'Langue de traduction';
@@ -874,6 +891,27 @@ class AppLocalizationsFr extends AppLocalizations {
   String get hadithSearchHint => 'Rechercher un hadith...';
 
   @override
+  String get hadithGlobalSearchHint =>
+      'Rechercher dans toutes les collections...';
+
+  @override
+  String get hadithBooksSearchHint => 'Rechercher dans les livres...';
+
+  @override
+  String get hadithInBookSearchHint => 'Rechercher dans ce livre...';
+
+  @override
+  String hadithSearchResultCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count résultats',
+      one: '$count résultat',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get hadithNoResults => 'Aucun hadith trouvé.';
 
   @override
@@ -894,4 +932,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String hadithNumberLabel(int number) {
     return 'N° $number';
   }
+
+  @override
+  String get hadithShowTranslation => 'Afficher la traduction';
+
+  @override
+  String get hadithHideTranslation => 'Masquer la traduction';
 }

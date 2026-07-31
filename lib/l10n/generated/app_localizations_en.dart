@@ -106,6 +106,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quranFontUthmanicName => 'Uthmanic (Lateef)';
 
   @override
+  String get quranFontUthmanicHafsName => 'Uthmanic Hafs (V22)';
+
+  @override
+  String get arabicFontSizeSectionTitle => 'Arabic Font Size';
+
+  @override
+  String get arabicFontSizeSectionDescription =>
+      'Set the Arabic reading size used in the Quran, Hadith, and Adhkar.';
+
+  @override
   String get adhkarRemindersSectionTitle => 'Adhkar Reminders';
 
   @override
@@ -300,6 +310,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get quranShowTranslations => 'Show Translations';
+
+  @override
+  String get quranShowTajweed => 'Show Tajweed Rules';
+
+  @override
+  String get quranShowTajweedSubtitle =>
+      'Color-code recitation rules (madd, ghunnah, ikhfa, qalqalah…)';
 
   @override
   String get quranTranslationLanguage => 'Translation Language';
@@ -869,6 +886,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hadithSearchHint => 'Search hadith...';
 
   @override
+  String get hadithGlobalSearchHint => 'Search all collections...';
+
+  @override
+  String get hadithBooksSearchHint => 'Search books...';
+
+  @override
+  String get hadithInBookSearchHint => 'Search within this book...';
+
+  @override
+  String hadithSearchResultCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count results',
+      one: '$count result',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get hadithNoResults => 'No hadith found.';
 
   @override
@@ -889,4 +926,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String hadithNumberLabel(int number) {
     return 'No. $number';
   }
+
+  @override
+  String get hadithShowTranslation => 'Show translation';
+
+  @override
+  String get hadithHideTranslation => 'Hide translation';
 }

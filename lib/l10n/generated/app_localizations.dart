@@ -286,6 +286,24 @@ abstract class AppLocalizations {
   /// **'Uthmanic (Lateef)'**
   String get quranFontUthmanicName;
 
+  /// No description provided for @quranFontUthmanicHafsName.
+  ///
+  /// In en, this message translates to:
+  /// **'Uthmanic Hafs (V22)'**
+  String get quranFontUthmanicHafsName;
+
+  /// No description provided for @arabicFontSizeSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic Font Size'**
+  String get arabicFontSizeSectionTitle;
+
+  /// No description provided for @arabicFontSizeSectionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the Arabic reading size used in the Quran, Hadith, and Adhkar.'**
+  String get arabicFontSizeSectionDescription;
+
   /// No description provided for @adhkarRemindersSectionTitle.
   ///
   /// In en, this message translates to:
@@ -627,6 +645,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show Translations'**
   String get quranShowTranslations;
+
+  /// No description provided for @quranShowTajweed.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Tajweed Rules'**
+  String get quranShowTajweed;
+
+  /// No description provided for @quranShowTajweedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Color-code recitation rules (madd, ghunnah, ikhfa, qalqalah…)'**
+  String get quranShowTajweedSubtitle;
 
   /// No description provided for @quranTranslationLanguage.
   ///
@@ -1606,6 +1636,30 @@ abstract class AppLocalizations {
   /// **'Search hadith...'**
   String get hadithSearchHint;
 
+  /// No description provided for @hadithGlobalSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search all collections...'**
+  String get hadithGlobalSearchHint;
+
+  /// No description provided for @hadithBooksSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search books...'**
+  String get hadithBooksSearchHint;
+
+  /// No description provided for @hadithInBookSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search within this book...'**
+  String get hadithInBookSearchHint;
+
+  /// No description provided for @hadithSearchResultCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} result} other{{count} results}}'**
+  String hadithSearchResultCount(int count);
+
   /// No description provided for @hadithNoResults.
   ///
   /// In en, this message translates to:
@@ -1629,6 +1683,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No. {number}'**
   String hadithNumberLabel(int number);
+
+  /// No description provided for @hadithShowTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Show translation'**
+  String get hadithShowTranslation;
+
+  /// No description provided for @hadithHideTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide translation'**
+  String get hadithHideTranslation;
 }
 
 class _AppLocalizationsDelegate
