@@ -25,11 +25,15 @@ String quranRevelationLabel(AppLocalizations l10n, String revelation) {
 class QuranInlineSurahHeader extends StatelessWidget {
   final SurahEntity surah;
   final Color accent;
+  final String fontFamily;
+  final List<String> fontFamilyFallback;
 
   const QuranInlineSurahHeader({
     super.key,
     required this.surah,
     required this.accent,
+    this.fontFamily = 'Lateef',
+    this.fontFamilyFallback = const ['Noto Naskh Arabic', 'Scheherazade New', 'Arial'],
   });
 
   @override
@@ -41,7 +45,11 @@ class QuranInlineSurahHeader extends StatelessWidget {
         children: [
           Text(
             surah.nameAr,
-            style: AppTextStyles.arabicHeading(fontSize: 26).copyWith(color: accent),
+            style: AppTextStyles.arabicHeading(
+              fontSize: 26,
+              fontFamily: fontFamily,
+              fontFamilyFallback: fontFamilyFallback,
+            ).copyWith(color: accent),
           ),
           const SizedBox(height: 4),
           Text(
@@ -58,8 +66,15 @@ class QuranInlineSurahHeader extends StatelessWidget {
 
 class QuranInlineBismillah extends StatelessWidget {
   final Color color;
+  final String fontFamily;
+  final List<String> fontFamilyFallback;
 
-  const QuranInlineBismillah({super.key, required this.color});
+  const QuranInlineBismillah({
+    super.key,
+    required this.color,
+    this.fontFamily = 'Lateef',
+    this.fontFamilyFallback = const ['Noto Naskh Arabic', 'Scheherazade New', 'Arial'],
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +82,11 @@ class QuranInlineBismillah extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 14),
       child: Text(
         'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ',
-        style: AppTextStyles.arabicQuran(fontSize: 30).copyWith(color: color),
+        style: AppTextStyles.arabicQuran(
+          fontSize: 30,
+          fontFamily: fontFamily,
+          fontFamilyFallback: fontFamilyFallback,
+        ).copyWith(color: color),
         textAlign: TextAlign.center,
         textDirection: TextDirection.rtl,
         locale: const Locale('ar'),

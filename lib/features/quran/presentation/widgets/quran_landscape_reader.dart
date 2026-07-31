@@ -30,22 +30,28 @@ class QuranLandscapeReader extends StatefulWidget {
   final int initialPage;
   final double? initialScrollOffset;
   final double fontSize;
+  final bool showTajweed;
   final List<SurahEntity> allSurahs;
   final AyahEntity? selectedAyah;
   final Set<String> bookmarkedAyahKeys;
   final void Function(AyahEntity) onAyahTapped;
   final QuranPositionChangedCallback onPositionChanged;
+  final String fontFamily;
+  final List<String> fontFamilyFallback;
 
   const QuranLandscapeReader({
     super.key,
     required this.initialPage,
     this.initialScrollOffset,
     required this.fontSize,
+    required this.showTajweed,
     required this.allSurahs,
     required this.selectedAyah,
     required this.bookmarkedAyahKeys,
     required this.onAyahTapped,
     required this.onPositionChanged,
+    this.fontFamily = 'Lateef',
+    this.fontFamilyFallback = const ['Noto Naskh Arabic', 'Scheherazade New', 'Arial'],
   });
 
   @override
@@ -65,6 +71,14 @@ class _QuranLandscapeReaderState extends State<QuranLandscapeReader> {
   bool _isLoadingMore = false;
   bool _initialLoadDone = false;
   bool _reachedEnd = false;
+
+  // Cached item list: rebuilding the Text.rich trees for every loaded ayah
+  // on every state change is expensive (each ayah becomes many colored
+  // spans when tajweed is on). The cache is invalidated only when the data
+  // or styling actually changes, so scroll/position updates reuse the same
+  // widget instances and Flutter skips re-layout entirely.
+  List<Widget>? _cachedItems;
+  String? _itemsSignature;
 
   @override
   void initState() {
@@ -224,6 +238,9 @@ class _QuranLandscapeReaderState extends State<QuranLandscapeReader> {
               selectedAyah: widget.selectedAyah,
               bookmarkedAyahKeys: widget.bookmarkedAyahKeys,
               recognizerFor: _getOrCreateRecognizer,
+              showTajweed: widget.showTajweed,
+              fontFamily: widget.fontFamily,
+              fontFamilyFallback: widget.fontFamilyFallback,
             ),
           ),
           textDirection: TextDirection.rtl,
@@ -278,7 +295,11 @@ class _QuranLandscapeReaderState extends State<QuranLandscapeReader> {
           ),
         );
         if (ayah.surahId != 9 && ayah.number == 1) {
-          items.add(QuranInlineBismillah(color: quranTextColor));
+          items.add(QuranInlineBismillah(
+            color: quranTextColor,
+            fontFamily: widget.fontFamily,
+            fontFamilyFallback: widget.fontFamilyFallback,
+          ));
         }
       } else if (isNewJuz) {
         _flushAyahRun(items, pending, quranTextColor, accent);
@@ -325,6 +346,37 @@ class _QuranLandscapeReaderState extends State<QuranLandscapeReader> {
     return items;
   }
 
+  /// Returns the item list, reusing the cached one when nothing that
+  /// affects the rendered ayahs has changed since the last build.
+  List<Widget> _getItems(Color quranTextColor, Color accent, AppLocalizations l10n) {
+    final signature = _computeSignature(quranTextColor, accent, l10n);
+    if (_itemsSignature == signature && _cachedItems != null) {
+      return _cachedItems!;
+    }
+    final items = _buildItems(quranTextColor, accent, l10n);
+    _itemsSignature = signature;
+    _cachedItems = items;
+    return items;
+  }
+
+  String _computeSignature(Color quranTextColor, Color accent, AppLocalizations l10n) {
+    final bookmarks = widget.bookmarkedAyahKeys.toList()..sort();
+    final bookmarksStr = bookmarks.join(',');
+    return [
+      _ayahs.length,
+      _nextPageToLoad,
+      _isLoadingMore,
+      widget.fontSize,
+      widget.showTajweed,
+      widget.selectedAyah?.id ?? -1,
+      bookmarksStr,
+      widget.allSurahs.length,
+      quranTextColor.toARGB32(),
+      accent.toARGB32(),
+      l10n.localeName,
+    ].join('|');
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -341,7 +393,7 @@ class _QuranLandscapeReaderState extends State<QuranLandscapeReader> {
       );
     }
 
-    final items = _buildItems(quranTextColor, accent, l10n);
+    final items = _getItems(quranTextColor, accent, l10n);
 
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {

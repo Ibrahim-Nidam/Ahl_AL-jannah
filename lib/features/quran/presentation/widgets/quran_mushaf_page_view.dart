@@ -31,6 +31,7 @@ class QuranMushafPageView extends StatefulWidget {
   final bool showTranslation;
   final String translationLang;
   final String readerMode; // 'mushaf' | 'study'
+  final bool showTajweed;
   final AyahEntity? selectedAyah;
   final List<SurahEntity> allSurahs;
   final int? targetAyahNumber;
@@ -39,6 +40,8 @@ class QuranMushafPageView extends StatefulWidget {
   /// ignore stale callbacks from off-screen / briefly-mounted pages.
   final Function(int surahId, int juz, int hizb, int pageNumber) onPageMetadataLoaded;
   final Set<String> bookmarkedAyahKeys;
+  final String fontFamily;
+  final List<String> fontFamilyFallback;
 
   const QuranMushafPageView({
     super.key,
@@ -47,12 +50,15 @@ class QuranMushafPageView extends StatefulWidget {
     required this.showTranslation,
     required this.translationLang,
     required this.readerMode,
+    required this.showTajweed,
     required this.selectedAyah,
     required this.allSurahs,
     this.targetAyahNumber,
     required this.onAyahTapped,
     required this.onPageMetadataLoaded,
     required this.bookmarkedAyahKeys,
+    this.fontFamily = 'Lateef',
+    this.fontFamilyFallback = const ['Noto Naskh Arabic', 'Scheherazade New', 'Arial'],
   });
 
   @override
@@ -208,9 +214,15 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
               QuranInlineSurahHeader(
                 surah: _getSurahEntity(group.first.surahId),
                 accent: accent,
+                fontFamily: widget.fontFamily,
+                fontFamilyFallback: widget.fontFamilyFallback,
               ),
               if (group.first.surahId != 9)
-                QuranInlineBismillah(color: quranTextColor),
+                QuranInlineBismillah(
+                  color: quranTextColor,
+                  fontFamily: widget.fontFamily,
+                  fontFamilyFallback: widget.fontFamilyFallback,
+                ),
             ],
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
@@ -224,6 +236,9 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
                     selectedAyah: widget.selectedAyah,
                     bookmarkedAyahKeys: widget.bookmarkedAyahKeys,
                     recognizerFor: _getOrCreateRecognizer,
+                    showTajweed: widget.showTajweed,
+                    fontFamily: widget.fontFamily,
+                    fontFamilyFallback: widget.fontFamilyFallback,
                   ),
                 ),
                 textDirection: TextDirection.rtl,
@@ -322,6 +337,9 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
                       selectedAyah: widget.selectedAyah,
                       bookmarkedAyahKeys: widget.bookmarkedAyahKeys,
                       recognizerFor: _getOrCreateRecognizer,
+                      showTajweed: widget.showTajweed,
+                      fontFamily: widget.fontFamily,
+                      fontFamilyFallback: widget.fontFamilyFallback,
                     ),
                   ),
                   textAlign: TextAlign.right,
