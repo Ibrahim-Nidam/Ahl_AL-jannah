@@ -1,33 +1,39 @@
 import '../../domain/entities/hadith_entities.dart';
 
-class HadithModel extends HadithEntity {
+class HadithModel extends HadithItem {
   const HadithModel({
-    required super.collectionId,
-    required super.number,
-    required super.text,
-    super.arabicNumber,
-    super.book,
+    required super.authorId,
+    required super.id,
+    required super.book,
+    required super.reference,
+    required super.grade,
+    required super.arabic,
+    required super.english,
   });
 
-  factory HadithModel.fromJson(Map<String, dynamic> json, String fallbackCollectionId) {
+  factory HadithModel.fromJson(Map<String, dynamic> json, String fallbackAuthorId) {
     return HadithModel(
-      collectionId: json['collection'] as String? ?? fallbackCollectionId,
-      number: _asInt(json['number']) ?? 0,
-      arabicNumber: _asInt(json['arabic_number']),
-      book: _asInt(json['book']),
-      text: (json['text'] as String? ?? '').trim(),
+      authorId: json['collection'] as String? ?? fallbackAuthorId,
+      id: _asInt(json['id']) ?? 0,
+      book: (json['book'] as String? ?? '').trim(),
+      reference: (json['reference'] as String? ?? '').trim(),
+      grade: (json['grade'] as String? ?? '').trim(),
+      arabic: (json['arabic'] as String? ?? '').trim(),
+      english: (json['english'] as String? ?? '').trim(),
     );
   }
 
-  /// Builds a model from a map produced by [_parseItems] in the data source
-  /// isolate helpers (keys already normalized to Dart field names).
+  /// Builds a model from a map produced by the isolate helpers in the data
+  /// source (keys already normalized to Dart field names).
   factory HadithModel.fromParsedMap(Map<String, dynamic> map) {
     return HadithModel(
-      collectionId: map['collectionId'] as String,
-      number: map['number'] as int,
-      arabicNumber: map['arabicNumber'] as int?,
-      book: map['book'] as int?,
-      text: map['text'] as String,
+      authorId: map['authorId'] as String,
+      id: map['id'] as int,
+      book: map['book'] as String,
+      reference: map['reference'] as String,
+      grade: map['grade'] as String,
+      arabic: map['arabic'] as String,
+      english: map['english'] as String,
     );
   }
 

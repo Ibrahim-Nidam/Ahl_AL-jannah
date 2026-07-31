@@ -11,13 +11,17 @@ class HadithRepositoryImpl implements HadithRepository {
   HadithRepositoryImpl(this._localDataSource);
 
   @override
-  Future<List<HadithCollectionMeta>> getCollections() => _localDataSource.getCollections();
+  Future<List<HadithAuthorMeta>> getAuthors() => _localDataSource.getAuthors();
 
   @override
-  Future<List<HadithEntity>> getHadithsByCollection(String collectionId) =>
-      _localDataSource.getHadithsByCollection(collectionId);
+  Future<List<HadithBookMeta>> getBooks(String authorId) =>
+      _localDataSource.getBooks(authorId);
 
   @override
-  Future<List<HadithSearchResult>> search(String query, {String? collectionId}) =>
-      _localDataSource.search(query, collectionId: collectionId);
+  Future<List<HadithItem>> getHadiths(String authorId, String bookId) =>
+      _localDataSource.getHadiths(authorId, bookId);
+
+  @override
+  Future<List<HadithSearchResult>> searchHadiths(String query) =>
+      _localDataSource.searchHadiths(query);
 }

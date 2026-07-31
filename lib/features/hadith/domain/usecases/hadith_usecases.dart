@@ -4,23 +4,31 @@ import '../entities/hadith_entities.dart';
 import '../repositories/hadith_repository.dart';
 
 @injectable
-class GetHadithCollections {
+class GetHadithAuthors {
   final HadithRepository _repository;
-  GetHadithCollections(this._repository);
-  Future<List<HadithCollectionMeta>> call() => _repository.getCollections();
+  GetHadithAuthors(this._repository);
+  Future<List<HadithAuthorMeta>> call() => _repository.getAuthors();
 }
 
 @injectable
-class GetHadithsByCollection {
+class GetHadithBooks {
   final HadithRepository _repository;
-  GetHadithsByCollection(this._repository);
-  Future<List<HadithEntity>> call(String collectionId) => _repository.getHadithsByCollection(collectionId);
+  GetHadithBooks(this._repository);
+  Future<List<HadithBookMeta>> call(String authorId) => _repository.getBooks(authorId);
 }
 
 @injectable
-class SearchHadith {
+class GetHadithsByBook {
   final HadithRepository _repository;
-  SearchHadith(this._repository);
-  Future<List<HadithSearchResult>> call(String query, {String? collectionId}) =>
-      _repository.search(query, collectionId: collectionId);
+  GetHadithsByBook(this._repository);
+  Future<List<HadithItem>> call(String authorId, String bookId) =>
+      _repository.getHadiths(authorId, bookId);
+}
+
+@injectable
+class SearchHadiths {
+  final HadithRepository _repository;
+  SearchHadiths(this._repository);
+  Future<List<HadithSearchResult>> call(String query) =>
+      _repository.searchHadiths(query);
 }

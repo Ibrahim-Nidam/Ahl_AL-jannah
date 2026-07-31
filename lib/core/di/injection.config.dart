@@ -144,20 +144,31 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i203.AdhkarRepository>(
       () => _i537.AdhkarRepositoryImpl(gh<_i793.AdhkarLocalDataSource>()),
     );
-    gh.factory<_i664.GetHadithCollections>(
-      () => _i664.GetHadithCollections(gh<_i1050.HadithRepository>()),
+    gh.factory<_i664.GetHadithAuthors>(
+      () => _i664.GetHadithAuthors(gh<_i1050.HadithRepository>()),
     );
-    gh.factory<_i664.GetHadithsByCollection>(
-      () => _i664.GetHadithsByCollection(gh<_i1050.HadithRepository>()),
+    gh.factory<_i664.GetHadithBooks>(
+      () => _i664.GetHadithBooks(gh<_i1050.HadithRepository>()),
     );
-    gh.factory<_i664.SearchHadith>(
-      () => _i664.SearchHadith(gh<_i1050.HadithRepository>()),
+    gh.factory<_i664.GetHadithsByBook>(
+      () => _i664.GetHadithsByBook(gh<_i1050.HadithRepository>()),
+    );
+    gh.factory<_i664.SearchHadiths>(
+      () => _i664.SearchHadiths(gh<_i1050.HadithRepository>()),
     );
     gh.lazySingleton<_i819.SettingsCubit>(
       () => _i819.SettingsCubit(
         gh<_i279.GetSettingsUseCase>(),
         gh<_i279.SaveSettingsUseCase>(),
         gh<_i279.ResetSettingsUseCase>(),
+      ),
+    );
+    gh.factory<_i354.HadithCubit>(
+      () => _i354.HadithCubit(
+        gh<_i664.GetHadithAuthors>(),
+        gh<_i664.GetHadithBooks>(),
+        gh<_i664.GetHadithsByBook>(),
+        gh<_i664.SearchHadiths>(),
       ),
     );
     gh.lazySingleton<_i762.PrayerCubit>(
@@ -226,13 +237,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i46.GetAllAdhkarUseCase>(
       () => _i46.GetAllAdhkarUseCase(gh<_i203.AdhkarRepository>()),
-    );
-    gh.factory<_i354.HadithCubit>(
-      () => _i354.HadithCubit(
-        gh<_i664.GetHadithCollections>(),
-        gh<_i664.GetHadithsByCollection>(),
-        gh<_i664.SearchHadith>(),
-      ),
     );
     gh.lazySingleton<_i1057.TasbeehCubit>(
       () => _i1057.TasbeehCubit(

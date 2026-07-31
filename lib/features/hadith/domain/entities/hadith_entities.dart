@@ -1,67 +1,82 @@
-/// Metadata describing a single Hadith collection bundled as a JSON asset
-/// under `assets/hadith/`. Any well-formed JSON file dropped into that
-/// folder (matching this schema) is picked up automatically — no code
-/// changes required. See [HadithLocalDataSourceImpl].
-class HadithCollectionMeta {
-  final String collectionId; // e.g. "bukhari", "qudsi"
-  final String assetPath; // e.g. "assets/hadith/bukhari_ar.json"
-  final String lang;
-  final int count;
-  final String displayTitle; // Latin/English display name
-  final String displayTitleAr; // Arabic display name
-  final String? attribution;
-  final String? license;
-  final String? licenseUrl;
-  final String? sourceUrl;
-  final String? sourceId;
+/// A Hadith collection author (e.g. Sahih al-Bukhari). Bundled as a folder
+/// under `assets/hadith/<authorId>/` containing an `_index.json` (book list)
+/// plus one JSON file per book. See [HadithLocalDataSourceImpl].
+class HadithAuthorMeta {
+  final String id; // e.g. "bukhari", "muslim", "forty_nawawi", "forty_qudsi"
+  final String titleEn;
+  final String titleAr;
+  final String subtitleEn;
+  final String subtitleAr;
+  final int bookCount;
+  final int hadithCount;
 
-  const HadithCollectionMeta({
-    required this.collectionId,
-    required this.assetPath,
-    required this.lang,
-    required this.count,
-    required this.displayTitle,
-    required this.displayTitleAr,
-    this.attribution,
-    this.license,
-    this.licenseUrl,
-    this.sourceUrl,
-    this.sourceId,
+  const HadithAuthorMeta({
+    required this.id,
+    required this.titleEn,
+    required this.titleAr,
+    required this.subtitleEn,
+    required this.subtitleAr,
+    required this.bookCount,
+    required this.hadithCount,
   });
 
   /// Picks the display name matching [languageCode] ('ar' -> Arabic name).
-  String titleFor(String languageCode) => languageCode == 'ar' ? displayTitleAr : displayTitle;
+  String titleFor(String languageCode) => languageCode == 'ar' ? titleAr : titleEn;
+
+  String subtitleFor(String languageCode) => languageCode == 'ar' ? subtitleAr : subtitleEn;
 }
 
-class HadithEntity {
-  final String collectionId;
-  final int number;
-  final int? arabicNumber;
-  final int? book;
-  final String text;
+/// A single book (chapter) within an author's collection.
+class HadithBookMeta {
+  final String authorId;
+  final String id; // asset file stem, e.g. "001_revelation"
+  final String titleEn; // e.g. "1 Revelation"
+  final String titleAr; // e.g. "كتاب بدء الوحى"
+  final int count;
 
-  const HadithEntity({
-    required this.collectionId,
-    required this.number,
-    required this.text,
-    this.arabicNumber,
-    this.book,
+  const HadithBookMeta({
+    required this.authorId,
+    required this.id,
+    required this.titleEn,
+    required this.titleAr,
+    required this.count,
+  });
+
+  /// Picks the display name matching [languageCode] ('ar' -> Arabic name).
+  String titleFor(String languageCode) => languageCode == 'ar' ? titleAr : titleEn;
+}
+
+/// A single hadith with both its Arabic text and English translation.
+class HadithItem {
+  final String authorId;
+  final int id;
+  final String book;
+  final String reference;
+  final String grade;
+  final String arabic;
+  final String english;
+
+  const HadithItem({
+    required this.authorId,
+    required this.id,
+    required this.book,
+    required this.reference,
+    required this.grade,
+    required this.arabic,
+    required this.english,
   });
 }
 
-/// A single search hit, carrying the source collection's display title in
-/// both languages so global search results can show where each hadith
-/// came from, translated to the active UI language.
+/// One match from the global "search everything" query, carrying enough
+/// context to open the originating book.
 class HadithSearchResult {
-  final HadithEntity hadith;
-  final String collectionTitle;
-  final String collectionTitleAr;
+  final HadithAuthorMeta author;
+  final HadithBookMeta book;
+  final HadithItem item;
 
   const HadithSearchResult({
-    required this.hadith,
-    required this.collectionTitle,
-    required this.collectionTitleAr,
+    required this.author,
+    required this.book,
+    required this.item,
   });
-
-  String titleFor(String languageCode) => languageCode == 'ar' ? collectionTitleAr : collectionTitle;
 }
