@@ -12,6 +12,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_palettes.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/extensions.dart';
+import '../../../settings/domain/entities/settings_entities.dart';
+import '../../../settings/presentation/bloc/settings_cubit.dart';
 import '../../data/services/quran_bookmark_storage.dart';
 import '../../domain/entities/quran_bookmark.dart';
 import '../../domain/entities/quran_entities.dart';
@@ -79,15 +81,25 @@ class _QuranReaderPageState extends State<QuranReaderPage>
 
   double _fontSize = 28.0;
   bool _showTranslation = true;
+  bool _showTajweed = false;
   String _translationLang = 'en';
   String _readerMode = 'mushaf';
+
+  // Two-finger pinch zoom state. The override lives only on this page's
+  // local [_fontSize]; it is never persisted and is reset to the saved
+  // settings font size next time the reader is opened.
+  final Map<int, Offset> _pinchPointers = {};
+  double _pinchBaseDistance = 0;
+  double _pinchStartFontSize = 0;
 
   late final SharedPreferences _prefs;
 
   @override
   void initState() {
     super.initState();
-    debugPrint('[QuranReader] initState: surahId=${widget.surahId} juzId=${widget.juzId} page=${widget.page}');
+    debugPrint(
+      '[QuranReader] initState: surahId=${widget.surahId} juzId=${widget.juzId} page=${widget.page}',
+    );
     WidgetsBinding.instance.addObserver(this);
     SharedPreferences.getInstance().then((prefs) {
       prefs.setBool(AppConstants.keyWasInsideQuranReader, true);
@@ -105,7 +117,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     if (views.isEmpty) return;
     final view = views.first;
     final logical = view.physicalSize / view.devicePixelRatio;
-    debugPrint('[QuranReader] didChangeMetrics logical=${logical.width}x${logical.height}');
+    debugPrint(
+      '[QuranReader] didChangeMetrics logical=${logical.width}x${logical.height}',
+    );
     if (logical.width >= 1 && logical.height >= 1) {
       setState(() {});
     }
@@ -163,10 +177,13 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       _prefs = await SharedPreferences.getInstance();
 
       setState(() {
-        _fontSize = _prefs.getDouble('quran_arabic_font_size') ?? 28.0;
+        _fontSize = _activeArabicFontSize();
         _showTranslation = _prefs.getBool('quran_show_translation') ?? true;
+        _showTajweed =
+            _prefs.getBool(AppConstants.keyQuranShowTajweed) ?? false;
         _translationLang = _prefs.getString('quran_translation_lang') ?? 'en';
-        _readerMode = _prefs.getString(AppConstants.keyQuranReaderMode) ?? 'mushaf';
+        _readerMode =
+            _prefs.getString(AppConstants.keyQuranReaderMode) ?? 'mushaf';
       });
 
       final cubitState = _cubit.state;
@@ -181,7 +198,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
           _allSurahs = latest.surahs;
           debugPrint('[QuranReader] surahs loaded: ${_allSurahs.length}');
         } else {
-          debugPrint('[QuranReader] WARNING: surahs failed to load, state=$latest');
+          debugPrint(
+            '[QuranReader] WARNING: surahs failed to load, state=$latest',
+          );
         }
       }
 
@@ -201,7 +220,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       } else if (widget.surahId != null) {
         debugPrint('[QuranReader] fetching ayahs for surah ${widget.surahId}');
         final ayahs = await _cubit.getAyahsBySurah(widget.surahId!);
-        debugPrint('[QuranReader] got ${ayahs.length} ayahs for surah ${widget.surahId}');
+        debugPrint(
+          '[QuranReader] got ${ayahs.length} ayahs for surah ${widget.surahId}',
+        );
         if (ayahs.isNotEmpty) {
           if (widget.initialAyahId != null) {
             final target = ayahs.firstWhere(
@@ -214,7 +235,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
             initialPageNum = ayahs.first.page;
           }
         } else {
-          debugPrint('[QuranReader] WARNING: no ayahs returned for surah ${widget.surahId} — check the Quran database.');
+          debugPrint(
+            '[QuranReader] WARNING: no ayahs returned for surah ${widget.surahId} — check the Quran database.',
+          );
         }
       } else if (widget.juzId != null) {
         final ayahs = await _cubit.getAyahsByJuz(widget.juzId!);
@@ -234,7 +257,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       _portraitSettled = false;
       _canPersistPosition = false;
       _pageController = PageController(initialPage: initialPageNum - 1);
-      debugPrint('[QuranReader] constructed PageController with initialPage=${_pageController!.initialPage}');
+      debugPrint(
+        '[QuranReader] constructed PageController with initialPage=${_pageController!.initialPage}',
+      );
 
       await _loadBookmarks();
 
@@ -252,7 +277,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
 
   Future<void> _saveLastPosition() async {
     if (!_canPersistPosition) {
-      debugPrint('[QuranReader] skip save: portrait/landscape position not settled yet');
+      debugPrint(
+        '[QuranReader] skip save: portrait/landscape position not settled yet',
+      );
       return;
     }
     // Prefer metadata from the *current* page; fall back to the opened surah.
@@ -269,7 +296,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
         readingMode: _readerMode,
         scrollOffset: _lastKnownScrollOffset,
       );
-      debugPrint('[QuranReader] saved last position: surah=$surahId page=$_currentPageNumber');
+      debugPrint(
+        '[QuranReader] saved last position: surah=$surahId page=$_currentPageNumber',
+      );
     } catch (e) {
       debugPrint('[QuranReader] Failed to save last reading position: $e');
     }
@@ -337,12 +366,16 @@ class _QuranReaderPageState extends State<QuranReaderPage>
   }
 
   bool get _isCurrentPageBookmarked {
-    return _bookmarks.any((b) => b.isPageBookmark && b.page == _currentPageNumber);
+    return _bookmarks.any(
+      (b) => b.isPageBookmark && b.page == _currentPageNumber,
+    );
   }
 
   QuranBookmark? get _currentPageBookmark {
     try {
-      return _bookmarks.firstWhere((b) => b.isPageBookmark && b.page == _currentPageNumber);
+      return _bookmarks.firstWhere(
+        (b) => b.isPageBookmark && b.page == _currentPageNumber,
+      );
     } catch (_) {
       return null;
     }
@@ -350,14 +383,20 @@ class _QuranReaderPageState extends State<QuranReaderPage>
 
   bool _isAyahBookmarked(int surahId, int ayahNumber) {
     return _bookmarks.any(
-      (b) => b.isAyahBookmark && b.surahId == surahId && b.ayahNumber == ayahNumber,
+      (b) =>
+          b.isAyahBookmark &&
+          b.surahId == surahId &&
+          b.ayahNumber == ayahNumber,
     );
   }
 
   QuranBookmark? _getAyahBookmark(int surahId, int ayahNumber) {
     try {
       return _bookmarks.firstWhere(
-        (b) => b.isAyahBookmark && b.surahId == surahId && b.ayahNumber == ayahNumber,
+        (b) =>
+            b.isAyahBookmark &&
+            b.surahId == surahId &&
+            b.ayahNumber == ayahNumber,
       );
     } catch (_) {
       return null;
@@ -381,12 +420,17 @@ class _QuranReaderPageState extends State<QuranReaderPage>
         if (!mounted) return;
         final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.quranPageRemovedBookmark(pageNum)), behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text(l10n.quranPageRemovedBookmark(pageNum)),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       } catch (e) {
         if (!mounted) return;
         final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.quranFailedRemoveBookmark('$e'))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.quranFailedRemoveBookmark('$e'))),
+        );
       }
     } else {
       try {
@@ -399,20 +443,29 @@ class _QuranReaderPageState extends State<QuranReaderPage>
             surahName: surah.nameEn,
             page: pageNum,
             ayahNumber: first.number,
-            previewText: QuranAyahSpanBuilder.formatAyahText(first.surahId, first.number, first.textAr),
+            previewText: QuranAyahSpanBuilder.formatAyahText(
+              first.surahId,
+              first.number,
+              first.textAr,
+            ),
             readingMode: _readerMode,
           );
           await _loadBookmarks();
           if (!mounted) return;
           final l10n = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.quranPageBookmarked(pageNum)), behavior: SnackBarBehavior.floating),
+            SnackBar(
+              content: Text(l10n.quranPageBookmarked(pageNum)),
+              behavior: SnackBarBehavior.floating,
+            ),
           );
         }
       } catch (e) {
         if (mounted) {
           final l10n = AppLocalizations.of(context);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.quranFailedBookmarkPage('$e'))));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.quranFailedBookmarkPage('$e'))),
+          );
         }
       }
     }
@@ -431,7 +484,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
         final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(l10n.quranVerseRemovedBookmark(ayah.surahId, ayah.number)),
+            content: Text(
+              l10n.quranVerseRemovedBookmark(ayah.surahId, ayah.number),
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -439,7 +494,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       } catch (e) {
         if (!mounted) return;
         final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.quranFailedRemoveBookmark('$e'))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.quranFailedRemoveBookmark('$e'))),
+        );
       }
     } else {
       try {
@@ -449,7 +506,11 @@ class _QuranReaderPageState extends State<QuranReaderPage>
           surahName: surah.nameEn,
           page: ayah.page,
           ayahNumber: ayah.number,
-          previewText: QuranAyahSpanBuilder.formatAyahText(ayah.surahId, ayah.number, ayah.textAr),
+          previewText: QuranAyahSpanBuilder.formatAyahText(
+            ayah.surahId,
+            ayah.number,
+            ayah.textAr,
+          ),
           readingMode: _readerMode,
         );
         await _loadBookmarks();
@@ -465,7 +526,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       } catch (e) {
         if (!mounted) return;
         final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.quranFailedBookmarkVerse('$e'))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.quranFailedBookmarkVerse('$e'))),
+        );
       }
     }
   }
@@ -475,11 +538,16 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     if (ayah == null) return;
     final l10n = AppLocalizations.of(context);
     final surah = _getSurahEntity(ayah.surahId);
-    final translationText = _translationLang == 'fr' ? ayah.translationFr : ayah.translationEn;
-    final textToCopy = '${surah.nameEn} ${ayah.surahId}:${ayah.number}\n\n'
-        '${ayah.textAr}\n\n${translationText ?? ""}';
+    final translationText = _translationLang == 'fr'
+        ? ayah.translationFr
+        : ayah.translationEn;
+    final textToCopy =
+        '${surah.nameEn} ${ayah.surahId}:${ayah.number}\n\n'
+        '${QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(ayah.textAr)}\n\n${translationText ?? ""}';
     Clipboard.setData(ClipboardData(text: textToCopy));
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.quranVerseCopied)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l10n.quranVerseCopied)));
     setState(() => _selectedAyah = null);
   }
 
@@ -488,25 +556,75 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     if (ayah == null) return;
     final l10n = AppLocalizations.of(context);
     final surah = _getSurahEntity(ayah.surahId);
-    final translationText = _translationLang == 'fr' ? ayah.translationFr : ayah.translationEn;
-    final shareText = '✨ *${l10n.quranShareQuoteTitle}* ✨\n\n'
+    final translationText = _translationLang == 'fr'
+        ? ayah.translationFr
+        : ayah.translationEn;
+    final shareText =
+        '✨ *${l10n.quranShareQuoteTitle}* ✨\n\n'
         '📖 *${surah.nameEn}* (${ayah.surahId}:${ayah.number})\n\n'
-        '« ${ayah.textAr} »\n\n${translationText ?? ""}\n\n${l10n.quranShareViaApp}';
+        '« ${QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(ayah.textAr)} »\n\n${translationText ?? ""}\n\n${l10n.quranShareViaApp}';
     Clipboard.setData(ClipboardData(text: shareText));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l10n.quranVerseShareReady)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l10n.quranVerseShareReady)));
     setState(() => _selectedAyah = null);
   }
 
-  Future<void> _saveFontSize(double size) async {
-    setState(() => _fontSize = size);
-    await _prefs.setDouble('quran_arabic_font_size', size);
+  /// The saved Arabic font size from the app-wide settings, falling back
+  /// to the platform default when settings haven't loaded yet.
+  double _activeArabicFontSize() {
+    final settingsState = getIt<SettingsCubit>().state;
+    if (settingsState is SettingsLoadSuccess) {
+      return settingsState.settings.arabicFontSize;
+    }
+    return AppConstants.defaultArabicFontSize;
+  }
+
+  void _onPinchPointerDown(PointerDownEvent event) {
+    _pinchPointers[event.pointer] = event.localPosition;
+    if (_pinchPointers.length == 2) {
+      final positions = _pinchPointers.values.toList();
+      _pinchBaseDistance = (positions[0] - positions[1]).distance;
+      _pinchStartFontSize = _fontSize;
+    }
+  }
+
+  void _onPinchPointerMove(PointerMoveEvent event) {
+    if (!_pinchPointers.containsKey(event.pointer)) return;
+    _pinchPointers[event.pointer] = event.localPosition;
+    if (_pinchPointers.length < 2) return;
+
+    final positions = _pinchPointers.values.toList();
+    final currentDistance = (positions[0] - positions[1]).distance;
+    if (_pinchBaseDistance <= 0) {
+      _pinchBaseDistance = currentDistance;
+      _pinchStartFontSize = _fontSize;
+      return;
+    }
+
+    final nextSize =
+        (_pinchStartFontSize * (currentDistance / _pinchBaseDistance)).clamp(
+          AppConstants.minArabicFontSize,
+          AppConstants.maxArabicFontSize,
+        );
+    if (nextSize != _fontSize) {
+      setState(() => _fontSize = nextSize);
+    }
+  }
+
+  void _onPinchPointerEnd(PointerEvent event) {
+    _pinchPointers.remove(event.pointer);
+    _pinchBaseDistance = 0;
   }
 
   Future<void> _saveShowTranslation(bool value) async {
     setState(() => _showTranslation = value);
     await _prefs.setBool('quran_show_translation', value);
+  }
+
+  Future<void> _saveShowTajweed(bool value) async {
+    setState(() => _showTajweed = value);
+    await _prefs.setBool(AppConstants.keyQuranShowTajweed, value);
   }
 
   Future<void> _saveTranslationLang(String lang) async {
@@ -522,8 +640,12 @@ class _QuranReaderPageState extends State<QuranReaderPage>
   void _showSettingsBottomSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: context.isDarkMode ? AppColors.surfaceDarkVariant : AppColors.surfaceLightVariant,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: context.isDarkMode
+          ? AppColors.surfaceDarkVariant
+          : AppColors.surfaceLightVariant,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
         final l10n = AppLocalizations.of(context);
         return StatefulBuilder(
@@ -538,14 +660,19 @@ class _QuranReaderPageState extends State<QuranReaderPage>
                     child: Container(
                       width: 40,
                       height: 4,
-                      decoration: BoxDecoration(color: Colors.grey.withAlpha(100), borderRadius: BorderRadius.circular(2)),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withAlpha(100),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
                   Text(
                     l10n.quranSettingsAppearance,
                     style: AppTextStyles.headingMedium.copyWith(
-                      color: context.isDarkMode ? AppColors.onSurfaceDark : AppColors.onSurfaceLight,
+                      color: context.isDarkMode
+                          ? AppColors.onSurfaceDark
+                          : AppColors.onSurfaceLight,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -554,14 +681,22 @@ class _QuranReaderPageState extends State<QuranReaderPage>
                     l10n.quranReadingMode,
                     style: AppTextStyles.bodyLarge.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: context.isDarkMode ? AppColors.onSurfaceDark : AppColors.onSurfaceLight,
+                      color: context.isDarkMode
+                          ? AppColors.onSurfaceDark
+                          : AppColors.onSurfaceLight,
                     ),
                   ),
                   const SizedBox(height: 8),
                   SegmentedButton<String>(
                     segments: [
-                      ButtonSegment(value: 'mushaf', label: Text(l10n.quranModeMushaf)),
-                      ButtonSegment(value: 'study', label: Text(l10n.quranModeStudy)),
+                      ButtonSegment(
+                        value: 'mushaf',
+                        label: Text(l10n.quranModeMushaf),
+                      ),
+                      ButtonSegment(
+                        value: 'study',
+                        label: Text(l10n.quranModeStudy),
+                      ),
                     ],
                     selected: {_readerMode},
                     onSelectionChanged: (selection) {
@@ -570,30 +705,13 @@ class _QuranReaderPageState extends State<QuranReaderPage>
                     },
                   ),
                   const SizedBox(height: 20),
-                  Text(
-                    l10n.quranArabicFontSize(_fontSize.round()),
-                    style: AppTextStyles.headingSmall.copyWith(
-                      color: context.isDarkMode ? AppColors.onSurfaceDark : AppColors.onSurfaceLight,
-                    ),
-                  ),
-                  Slider(
-                    value: _fontSize,
-                    min: 20.0,
-                    max: 45.0,
-                    divisions: 25,
-                    activeColor: AppColors.primaryGreen,
-                    inactiveColor: AppColors.primaryGreen.withAlpha(50),
-                    onChanged: (val) {
-                      setModalState(() {});
-                      _saveFontSize(val);
-                    },
-                  ),
-                  const SizedBox(height: 16),
                   SwitchListTile(
                     title: Text(
                       l10n.quranShowTranslations,
                       style: AppTextStyles.bodyLarge.copyWith(
-                        color: context.isDarkMode ? AppColors.onSurfaceDark : AppColors.onSurfaceLight,
+                        color: context.isDarkMode
+                            ? AppColors.onSurfaceDark
+                            : AppColors.onSurfaceLight,
                       ),
                     ),
                     value: _showTranslation,
@@ -620,8 +738,14 @@ class _QuranReaderPageState extends State<QuranReaderPage>
                           ),
                           SegmentedButton<String>(
                             segments: [
-                              ButtonSegment(value: 'en', label: Text(l10n.quranLangEnglish)),
-                              ButtonSegment(value: 'fr', label: Text(l10n.quranLangFrench)),
+                              ButtonSegment(
+                                value: 'en',
+                                label: Text(l10n.quranLangEnglish),
+                              ),
+                              ButtonSegment(
+                                value: 'fr',
+                                label: Text(l10n.quranLangFrench),
+                              ),
                             ],
                             selected: {_translationLang},
                             onSelectionChanged: (Set<String> newSelection) {
@@ -633,6 +757,31 @@ class _QuranReaderPageState extends State<QuranReaderPage>
                       ),
                     ),
                   ],
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    title: Text(
+                      l10n.quranShowTajweed,
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        color: context.isDarkMode
+                            ? AppColors.onSurfaceDark
+                            : AppColors.onSurfaceLight,
+                      ),
+                    ),
+                    subtitle: Text(
+                      l10n.quranShowTajweedSubtitle,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: context.isDarkMode
+                            ? AppColors.onSurfaceDarkVariant
+                            : AppColors.onSurfaceLightVariant,
+                      ),
+                    ),
+                    value: _showTajweed,
+                    activeThumbColor: AppColors.primaryGreen,
+                    onChanged: (val) {
+                      setModalState(() {});
+                      _saveShowTajweed(val);
+                    },
+                  ),
                   const SizedBox(height: 16),
                 ],
               ),
@@ -655,10 +804,21 @@ class _QuranReaderPageState extends State<QuranReaderPage>
         margin: const EdgeInsets.all(20),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.surfaceDarkVariant.withAlpha(240) : Colors.white.withAlpha(240),
+          color: isDark
+              ? AppColors.surfaceDarkVariant.withAlpha(240)
+              : Colors.white.withAlpha(240),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.accentGold.withAlpha(150), width: 1.5),
-          boxShadow: [BoxShadow(color: Colors.black.withAlpha(50), blurRadius: 15, offset: const Offset(0, 5))],
+          border: Border.all(
+            color: AppColors.accentGold.withAlpha(150),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(50),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -669,11 +829,16 @@ class _QuranReaderPageState extends State<QuranReaderPage>
                 children: [
                   Text(
                     surah.nameEn,
-                    style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryGreen,
+                    ),
                   ),
                   Text(
                     l10n.quranVerseLabel(ayah.surahId, ayah.number),
-                    style: AppTextStyles.bodySmall.copyWith(color: isDark ? Colors.white70 : Colors.black54),
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: isDark ? Colors.white70 : Colors.black54,
+                    ),
                   ),
                 ],
               ),
@@ -683,7 +848,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
               children: [
                 IconButton(
                   icon: Icon(
-                    _isAyahBookmarked(ayah.surahId, ayah.number) ? Icons.bookmark_rounded : Icons.bookmark_add_outlined,
+                    _isAyahBookmarked(ayah.surahId, ayah.number)
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_add_outlined,
                     color: AppColors.primaryGreen,
                   ),
                   tooltip: _isAyahBookmarked(ayah.surahId, ayah.number)
@@ -692,17 +859,27 @@ class _QuranReaderPageState extends State<QuranReaderPage>
                   onPressed: _toggleSelectedAyahBookmark,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.copy_rounded, color: AppColors.primaryGreen),
+                  icon: const Icon(
+                    Icons.copy_rounded,
+                    color: AppColors.primaryGreen,
+                  ),
                   tooltip: l10n.commonCopy,
                   onPressed: _copySelectedAyah,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.share_rounded, color: AppColors.primaryGreen),
+                  icon: const Icon(
+                    Icons.share_rounded,
+                    color: AppColors.primaryGreen,
+                  ),
                   tooltip: l10n.commonShare,
                   onPressed: _shareSelectedAyah,
                 ),
                 const SizedBox(width: 8),
-                Container(width: 1.5, height: 30, color: isDark ? Colors.white24 : Colors.black12),
+                Container(
+                  width: 1.5,
+                  height: 30,
+                  color: isDark ? Colors.white24 : Colors.black12,
+                ),
                 const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.close_rounded, color: AppColors.error),
@@ -740,7 +917,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
                     Text(
                       _getCurrentTitle(),
                       style: AppTextStyles.arabicHeading(fontSize: 18).copyWith(
-                        color: isDark ? AppColors.onSurfaceDark : AppColors.onSurfaceLight,
+                        color: isDark
+                            ? AppColors.onSurfaceDark
+                            : AppColors.onSurfaceLight,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -748,7 +927,10 @@ class _QuranReaderPageState extends State<QuranReaderPage>
                       Text(
                         _activeHizb != null
                             ? '${l10n.quranJuzLabel(_activeJuz!)} • ${l10n.quranHizbLabel(_activeHizb!)} • ${l10n.quranPageLabel(_currentPageNumber)}'
-                            : l10n.quranJuzPageSubtitle(_activeJuz!, _currentPageNumber),
+                            : l10n.quranJuzPageSubtitle(
+                                _activeJuz!,
+                                _currentPageNumber,
+                              ),
                         style: AppTextStyles.caption.copyWith(
                           color: AppColors.accentGoldDark,
                           fontWeight: FontWeight.bold,
@@ -759,16 +941,22 @@ class _QuranReaderPageState extends State<QuranReaderPage>
               ),
               IconButton(
                 icon: Icon(
-                  _isCurrentPageBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                  _isCurrentPageBookmarked
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
                   color: _isCurrentPageBookmarked ? AppColors.accentGold : null,
                 ),
-                tooltip: _isCurrentPageBookmarked ? l10n.quranUnmarkPage : l10n.quranBookmarkPage,
+                tooltip: _isCurrentPageBookmarked
+                    ? l10n.quranUnmarkPage
+                    : l10n.quranBookmarkPage,
                 onPressed: _togglePageBookmark,
               ),
               IconButton(
                 icon: const Icon(Icons.bookmarks_rounded),
                 tooltip: l10n.quranManageBookmarks,
-                onPressed: () => context.pushNamed('quran_bookmarks').then((_) => _loadBookmarks()),
+                onPressed: () => context
+                    .pushNamed('quran_bookmarks')
+                    .then((_) => _loadBookmarks()),
               ),
               IconButton(
                 icon: const Icon(Icons.text_fields_rounded),
@@ -800,7 +988,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
             if (mounted) _schedulePortraitSettle(retriesLeft: retriesLeft - 1);
           });
         } else {
-          debugPrint('[QuranReader] portrait settle gave up waiting for clients');
+          debugPrint(
+            '[QuranReader] portrait settle gave up waiting for clients',
+          );
         }
         return;
       }
@@ -823,7 +1013,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       final targetIndex = (_currentPageNumber - 1).clamp(0, 603);
       final page = controller.page;
       if (page == null) {
-        debugPrint('[QuranReader] portrait settle: page is null, jumping to $targetIndex');
+        debugPrint(
+          '[QuranReader] portrait settle: page is null, jumping to $targetIndex',
+        );
         controller.jumpToPage(targetIndex);
         if (retriesLeft > 0) {
           Future.delayed(const Duration(milliseconds: 32), () {
@@ -891,7 +1083,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
         });
       }
     } catch (e) {
-      debugPrint('[QuranReader] Failed to fetch metadata for page \$pageNum: \$e');
+      debugPrint(
+        '[QuranReader] Failed to fetch metadata for page \$pageNum: \$e',
+      );
     }
   }
 
@@ -899,6 +1093,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     // Use ambient RTL Directionality for mushaf page-turn direction
     // instead of PageView.reverse. `reverse: true` breaks initialPage /
     // jumpToPage on many devices (viewport stays on page 1 → blank).
+    final quranFont = _activeQuranFont();
     return Directionality(
       textDirection: TextDirection.rtl,
       child: PageView.builder(
@@ -915,13 +1110,16 @@ class _QuranReaderPageState extends State<QuranReaderPage>
             showTranslation: _showTranslation,
             translationLang: _translationLang,
             readerMode: _readerMode,
+            showTajweed: _showTajweed,
             selectedAyah: _selectedAyah,
             allSurahs: _allSurahs,
             bookmarkedAyahKeys: _bookmarkedAyahKeys,
+            fontFamily: quranFont.fontFamily,
+            fontFamilyFallback: quranFont.fontFamilyFallback,
             targetAyahNumber:
                 (pageNum == widget.page || pageNum == _selectedAyah?.page)
-                    ? widget.initialAyahId
-                    : null,
+                ? widget.initialAyahId
+                : null,
             onAyahTapped: _onAyahTapped,
             onPageMetadataLoaded: _onPageMetadataLoaded,
           );
@@ -931,6 +1129,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
   }
 
   Widget _buildLandscape() {
+    final quranFont = _activeQuranFont();
     return QuranLandscapeReader(
       // Key must NOT include page — onPositionChanged updates page and
       // would remount the reader (jump to top) on every scroll settle.
@@ -938,9 +1137,12 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       initialPage: _currentPageNumber,
       initialScrollOffset: _resumeScrollOffset,
       fontSize: _fontSize,
+      showTajweed: _showTajweed,
       allSurahs: _allSurahs,
       selectedAyah: _selectedAyah,
       bookmarkedAyahKeys: _bookmarkedAyahKeys,
+      fontFamily: quranFont.fontFamily,
+      fontFamilyFallback: quranFont.fontFamilyFallback,
       onAyahTapped: _onAyahTapped,
       onPositionChanged: (surahId, juz, page, offset) {
         // Avoid setState when nothing meaningful changed — reduces rebuild jank
@@ -981,11 +1183,23 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     });
   }
 
+  /// Resolves the user's selected Quran font from the settings cubit,
+  /// falling back to the default when settings haven't loaded yet.
+  QuranFont _activeQuranFont() {
+    final settingsState = getIt<SettingsCubit>().state;
+    if (settingsState is SettingsLoadSuccess) {
+      return settingsState.settings.quranFont;
+    }
+    return QuranFont.uthmanic;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = context.isDarkMode;
     final palette = Theme.of(context).extension<AppPaletteColors>();
-    final surfaceColor = palette?.surface ?? (isDark ? AppColors.surfaceDark : AppColors.surfaceLight);
+    final surfaceColor =
+        palette?.surface ??
+        (isDark ? AppColors.surfaceDark : AppColors.surfaceLight);
     final mediaSize = MediaQuery.sizeOf(context);
 
     debugPrint(
@@ -997,19 +1211,21 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       backgroundColor: surfaceColor,
       body: _isLoading
           ? Center(
-              child: CircularProgressIndicator(color: palette?.primary ?? AppColors.primaryGreen),
+              child: CircularProgressIndicator(
+                color: palette?.primary ?? AppColors.primaryGreen,
+              ),
             )
           : _errorMessage != null
-              ? Center(child: Text(AppLocalizations.of(context).commonError(_errorMessage!)))
-              : _buildReaderBody(mediaSize, isDark, surfaceColor),
+          ? Center(
+              child: Text(
+                AppLocalizations.of(context).commonError(_errorMessage!),
+              ),
+            )
+          : _buildReaderBody(mediaSize, isDark, surfaceColor),
     );
   }
 
-  Widget _buildReaderBody(
-    Size mediaSize,
-    bool isDark,
-    Color surfaceColor,
-  ) {
+  Widget _buildReaderBody(Size mediaSize, bool isDark, Color surfaceColor) {
     // Prefer MediaQuery over LayoutBuilder — LayoutBuilder was reporting 0x0
     // after cold start even though the shell had a real size.
     final width = mediaSize.width;
@@ -1029,11 +1245,11 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     });
 
     final isLandscape = width > height;
-    final orientation =
-        isLandscape ? Orientation.landscape : Orientation.portrait;
+    final orientation = isLandscape
+        ? Orientation.landscape
+        : Orientation.portrait;
     final previous = _lastOrientation;
-    final sizeRecovered =
-        _lastMediaSize.width < 1 && width >= 1 && height >= 1;
+    final sizeRecovered = _lastMediaSize.width < 1 && width >= 1 && height >= 1;
 
     debugPrint(
       '[QuranReader] reader body ${width.toStringAsFixed(0)}x${height.toStringAsFixed(0)} '
@@ -1079,16 +1295,23 @@ class _QuranReaderPageState extends State<QuranReaderPage>
             fit: StackFit.expand,
             children: [
               Positioned.fill(
-                child: GestureDetector(
+                child: Listener(
                   behavior: HitTestBehavior.translucent,
-                  onTap: () {
-                    if (_selectedAyah != null) {
-                      setState(() => _selectedAyah = null);
-                    } else {
-                      _chromeVisible.value = !_chromeVisible.value;
-                    }
-                  },
-                  child: isLandscape ? _buildLandscape() : _buildPortrait(),
+                  onPointerDown: _onPinchPointerDown,
+                  onPointerMove: _onPinchPointerMove,
+                  onPointerUp: _onPinchPointerEnd,
+                  onPointerCancel: _onPinchPointerEnd,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () {
+                      if (_selectedAyah != null) {
+                        setState(() => _selectedAyah = null);
+                      } else {
+                        _chromeVisible.value = !_chromeVisible.value;
+                      }
+                    },
+                    child: isLandscape ? _buildLandscape() : _buildPortrait(),
+                  ),
                 ),
               ),
               if (_selectedAyah != null) _buildSelectionOverlay(isDark),
