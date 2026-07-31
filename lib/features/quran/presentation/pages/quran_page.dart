@@ -8,10 +8,12 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/extensions.dart';
+import '../../../../core/widgets/clear_text_suffix.dart';
 import '../../data/services/quran_bookmark_storage.dart';
 import '../../domain/entities/quran_bookmark.dart';
 import '../../domain/entities/quran_entities.dart';
 import '../cubit/quran_cubit.dart';
+import '../widgets/quran_ayah_span_builder.dart';
 import '../widgets/quran_inline_headers.dart';
 
 class QuranPage extends StatefulWidget {
@@ -71,12 +73,20 @@ class _QuranPageState extends State<QuranPage>
               prefs.getBool(AppConstants.keyWasInsideQuranReader) ?? false;
           if (wasInsideReader && mounted) {
             _autoResumed = true;
+            // The initial shell route (and its entrance animation) may still
+            // be in flight during the first frames, leaving the Navigator
+            // locked ("!_debugLocked"). Wait past that transition before
+            // pushing the reader so the auto-resume never navigates while
+            // the navigator is busy.
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              _openReader({
-                'surahId': pos.surahId,
-                'title': pos.surahName,
-                'initialAyahId': pos.ayahNumber,
-                'page': pos.page,
+              Future<void>.delayed(const Duration(milliseconds: 400), () {
+                if (!mounted) return;
+                _openReader({
+                  'surahId': pos.surahId,
+                  'title': pos.surahName,
+                  'initialAyahId': pos.ayahNumber,
+                  'page': pos.page,
+                });
               });
             });
           }
@@ -314,6 +324,7 @@ class _QuranPageState extends State<QuranPage>
                 borderSide: BorderSide.none,
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              suffixIcon: ClearTextSuffix(controller: _surahFilterController),
             ),
           ),
         ),
@@ -499,6 +510,7 @@ class _QuranPageState extends State<QuranPage>
                       borderSide: BorderSide.none,
                     ),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    suffixIcon: ClearTextSuffix(controller: _searchController),
                   ),
                   onSubmitted: (val) {
                     _cubit.search(val);
@@ -629,7 +641,7 @@ class _QuranPageState extends State<QuranPage>
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              ayah.textAr,
+                              QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(ayah.textAr),
                               style: AppTextStyles.arabicBody(fontSize: 16)
                                   .copyWith(
                                     color: isDark

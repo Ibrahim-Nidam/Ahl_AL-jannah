@@ -33,7 +33,12 @@ class _AppScaffoldState extends State<AppScaffold> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _restoreLastTab();
+      // Wait for the initial shell route transition to finish; switching
+      // branches while the Navigator is mid-transition can trigger the
+      // "!_debugLocked" assertion in NavigatorState.build.
+      Future<void>.delayed(const Duration(milliseconds: 400), () {
+        _restoreLastTab();
+      });
     });
   }
 
