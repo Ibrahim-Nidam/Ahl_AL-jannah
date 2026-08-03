@@ -1,4 +1,4 @@
-package com.example.ahl_jannah
+package com.ibrahimnidam.ahljannah
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine

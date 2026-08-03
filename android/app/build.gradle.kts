@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.ahl_jannah"
+    namespace = "com.ibrahimnidam.ahljannah"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -21,7 +21,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.ahl_jannah"
+        applicationId = "com.ibrahimnidam.ahljannah"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
