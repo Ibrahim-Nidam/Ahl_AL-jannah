@@ -15,10 +15,13 @@ import '../../domain/tajweed/quran_tajweed_analyzer.dart';
 import '../../domain/tajweed/quran_tajweed_rule.dart';
 
 abstract final class QuranAyahSpanBuilder {
-  /// Arabic diacritical marks range used for stripping.
+  /// Arabic diacritical marks range used for stripping. Includes the tatweel
+  /// (kashida, U+0640) that Uthmani encodings embed inside words (e.g.
+  /// اللَّهِ / الرَّحْمَـٰنِ) — without stripping it the Bismillah skeleton
+  /// never matches and the embedded copy is shown alongside the header.
   static final _diacriticsRe = RegExp(
     '[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC'
-    '\u06DF-\u06E8\u06EA-\u06ED]',
+    '\u06DF-\u06E8\u06EA-\u06ED\u0640]',
   );
 
   /// Marks that only exist in the database export, not in the printed
