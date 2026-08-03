@@ -115,6 +115,20 @@ class PrayerCubit extends Cubit<PrayerState> {
         nextDayTimes: nextDayTimes,
       );
 
+      // If the user stopped the currently-active adhan (from the notification
+      // shade, which may have been handled in a background isolate), make sure
+      // any in-app audio for it is also stopped and it is not auto-replayed.
+      final stoppedKey = await PrayerNotificationService.readManualAdhanStop();
+      if (stoppedKey != null) {
+        final active = PrayerNotificationIds.activePrayerKey(
+          notificationTimes,
+          settings,
+        );
+        if (active == stoppedKey) {
+          await _notificationService.stopActiveAdhan(notificationTimes, settings);
+        }
+      }
+
       _startTimer();
     } catch (e) {
       emit(PrayerLoadFailure(e.toString()));
@@ -274,9 +288,21 @@ class PrayerCubit extends Cubit<PrayerState> {
         final remaining = currentState.nextPrayerTime.difference(now);
 
         if (remaining.isNegative || remaining.inSeconds == 0) {
-          // Current prayer time passed! Recalculate everything.
-          _countdownTimer?.cancel();
-          loadPrayerTimes(date: currentState.selectedDate);
+          // Current prayer time passed! Transition UI to next prayer without calling
+          // loadPrayerTimes() which would cancel pending system notifications.
+          final (nextName, nextTime) = _findNextPrayer(
+            currentState.location,
+            currentState.settings,
+            currentState.todayTimes,
+          );
+          final newRemaining = nextTime.difference(now);
+          emit(
+            currentState.copyWith(
+              nextPrayerName: nextName,
+              nextPrayerTime: nextTime,
+              timeRemaining: newRemaining,
+            ),
+          );
         } else {
           emit(currentState.copyWith(timeRemaining: remaining));
         }

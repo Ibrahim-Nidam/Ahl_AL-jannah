@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:injectable/injectable.dart';
@@ -46,27 +45,26 @@ class AdhanAudioPlayer {
       _currentPrayerKey = prayerKey;
 
       AppLogger.debug('Setting audio player configuration');
-      // Use alarm context with no audio focus so the adhan is not
-      // interrupted by notifications, touch sounds, or other transient
-      // audio events — it should only stop when the user explicitly presses Stop.
       await player.setAudioContext(AudioContext(
         android: AudioContextAndroid(
+          isSpeakerphoneOn: true,
+          stayAwake: true,
           usageType: AndroidUsageType.alarm,
-          audioFocus: AndroidAudioFocus.none,
+          contentType: AndroidContentType.music,
+          audioFocus: AndroidAudioFocus.gain,
+        ),
+        iOS: AudioContextIOS(
+          category: AVAudioSessionCategory.playback,
+          options: {
+            AVAudioSessionOptions.mixWithOthers,
+          },
         ),
       ));
       await player.setReleaseMode(ReleaseMode.release);
       await player.setVolume(1.0);
 
-      // On Android, set source explicitly for reliable playback
-      if (Platform.isAndroid) {
-        AppLogger.debug('Android detected - using setSourceAsset');
-        await player.setSourceAsset(assetPath);
-        await player.play(AssetSource(assetPath));
-      } else {
-        AppLogger.debug('iOS detected - using standard play');
-        await player.play(AssetSource(assetPath));
-      }
+      AppLogger.debug('Starting adhan audio playback');
+      await player.play(AssetSource(assetPath));
 
       AppLogger.info('Audio player play command executed successfully');
 

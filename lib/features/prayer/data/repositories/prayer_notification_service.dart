@@ -11,6 +11,7 @@
 ///   shared by every notification kind this service schedules.
 library;
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' show Locale, PlatformDispatcher;
 import 'package:flutter/foundation.dart';
@@ -19,9 +20,11 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:injectable/injectable.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../settings/domain/entities/settings_entities.dart';
 import '../../domain/entities/prayer_entities.dart';
@@ -122,7 +125,9 @@ class PrayerNotificationIds {
     for (final key in _adhanPrayerKeys) {
       if (settings.mutedPrayers.contains(key)) continue;
       final time = times[key]!;
-      if (now.isAfter(time) && now.isBefore(time.add(window))) {
+      // Buffer from 30 seconds before prayer time up to window duration after
+      if (!now.isBefore(time.subtract(const Duration(seconds: 30))) &&
+          now.isBefore(time.add(window))) {
         return key;
       }
     }
@@ -182,23 +187,34 @@ void onBackgroundNotificationResponse(NotificationResponse response) {
 /// Shared action handling used by both the foreground and background
 /// response handlers, so this logic exists in exactly one place.
 Future<void> _handleAction(NotificationResponse response) async {
-  final prayerKey = response.payload;
-  if (prayerKey == null) return;
-
   final actionId = response.actionId;
   if (actionId != _actionCancelAdhan && actionId != _actionStopAdhan) return;
 
-  // Both actions resolve to the same effect: the upcoming/currently
-  // playing Adhan for that prayer (and its "Stop Adhan" banner, if
-  // showing) should not sound / should stop immediately. The next
-  // prayers are untouched since IDs are per-prayer.
+  // Persist that the adhan was manually stopped so a later app session that
+  // re-opens inside the still-active window does not auto-replay it.
+  final prayerKey = response.payload;
+  if (prayerKey != null && _adhanPrayerKeys.contains(prayerKey)) {
+    await PrayerNotificationService.persistManualAdhanStop(prayerKey);
+  }
+
+  // Cancel the notification and stop audio playback.
   final plugin = FlutterLocalNotificationsPlugin();
   try {
-    await plugin.cancel(PrayerNotificationIds.adhanId(prayerKey));
-    await plugin.cancel(PrayerNotificationIds.stopBannerId(prayerKey));
-    debugPrint('Handled "$actionId" for $prayerKey');
+    await plugin.cancel(9999);
+    for (final key in _adhanPrayerKeys) {
+      await plugin.cancel(PrayerNotificationIds.adhanId(key));
+    }
+    // This handler can run in a background isolate (app terminated or in the
+    // background), where the DI container has not been configured. Resolve the
+    // audio player defensively so stop attempts never throw out of here.
+    if (getIt.isRegistered<AdhanAudioPlayer>()) {
+      try {
+        await getIt<AdhanAudioPlayer>().stopAdhan();
+      } catch (_) {}
+    }
+    AppLogger.info('Handled "$actionId" (payload: ${response.payload})');
   } catch (e) {
-    debugPrint('Failed to handle notification action "$actionId": $e');
+    AppLogger.error('Failed to handle notification action "$actionId"', error: e);
   }
 }
 
@@ -263,6 +279,31 @@ class PrayerNotificationService {
         onDidReceiveBackgroundNotificationResponse: onBackgroundNotificationResponse,
       );
 
+      if (Platform.isAndroid) {
+        final androidImpl = _notificationsPlugin
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        if (androidImpl != null) {
+          await androidImpl.deleteNotificationChannel('adhan_alarm_channel_silent_v6');
+          await androidImpl.deleteNotificationChannel('adhan_alarm_channel_adhan_v6');
+          await androidImpl.deleteNotificationChannel('adhan_alarm_channel_adhan_alfajr_v6');
+          await androidImpl.deleteNotificationChannel('adhan_alarm_channel_adhan_short_v6');
+          await androidImpl.deleteNotificationChannel('adhan_alarm_channel_adhan_v5');
+          await androidImpl.deleteNotificationChannel('adhan_alarm_channel_adhan_alfajr_v5');
+          await androidImpl.deleteNotificationChannel('adhan_alarm_channel_adhan_short_v5');
+          await androidImpl.deleteNotificationChannel('adhan_alarm_channel_adhan_v4');
+          await androidImpl.deleteNotificationChannel('adhan_alarm_channel_adhan_alfajr_v4');
+          await androidImpl.deleteNotificationChannel('adhan_alarm_channel_adhan_short_v4');
+          await androidImpl.deleteNotificationChannel('adhan_alarm_channel_adhan_v3');
+          await androidImpl.deleteNotificationChannel('adhan_alarm_channel_adhan_alfajr_v3');
+          await androidImpl.deleteNotificationChannel('adhan_alarm_channel_adhan_short_v3');
+          await androidImpl.deleteNotificationChannel('adhan_channel_adhan_v2');
+          await androidImpl.deleteNotificationChannel('adhan_channel_adhan_alfajr_v2');
+          await androidImpl.deleteNotificationChannel('adhan_channel_adhan_short_v2');
+          await androidImpl.deleteNotificationChannel('adhan_channel_adhan_v1');
+          await androidImpl.deleteNotificationChannel('adhan_stop_control_channel');
+        }
+      }
+
       // Cold start via a plain notification-body tap (app was fully
       // killed) — the OS already launched the app; route to the correct
       // destination once the widget tree (and router) is up. The short
@@ -315,29 +356,26 @@ class PrayerNotificationService {
     }
   }
 
-  /// Cancels all notifications except the currently playing adhan and its stop banner.
+  /// Cancels all notifications except the currently playing adhan.
   /// This prevents interrupting adhan playback when scheduling new notifications.
   Future<void> _cancelAllNotificationsExcept(String activePrayerKey) async {
     try {
-      // Get the IDs of the notifications to preserve
       final adhanId = PrayerNotificationIds.adhanId(activePrayerKey);
-      final stopBannerId = PrayerNotificationIds.stopBannerId(activePrayerKey);
       
       // Cancel all prayer notifications except the active adhan
       for (final key in _allPrayerKeys) {
-        if (key == activePrayerKey) continue; // Skip the active prayer
+        if (key == activePrayerKey) continue;
         await _notificationsPlugin.cancel(PrayerNotificationIds.reminderId(key));
         await _notificationsPlugin.cancel(PrayerNotificationIds.adhanId(key));
-        await _notificationsPlugin.cancel(PrayerNotificationIds.stopBannerId(key));
       }
       
       // Cancel Adhkar reminders
       await _notificationsPlugin.cancel(PrayerNotificationIds.adhkarReminderId(AdhkarReminderKind.morning));
       await _notificationsPlugin.cancel(PrayerNotificationIds.adhkarReminderId(AdhkarReminderKind.evening));
       
-      debugPrint('[NOTIFICATION] Preserved adhan notification for $activePrayerKey (ID: $adhanId, Stop ID: $stopBannerId)');
+      AppLogger.info('Preserved adhan notification for $activePrayerKey (ID: $adhanId)');
     } catch (e, st) {
-      debugPrint('_cancelAllNotificationsExcept failed: $e\n$st');
+      AppLogger.error('_cancelAllNotificationsExcept failed', error: e, stackTrace: st);
     }
   }
 
@@ -354,14 +392,14 @@ class PrayerNotificationService {
     required AppLanguage language,
     PrayerTimeEntity? nextDayTimes,
   }) async {
-    debugPrint('[NOTIFICATION] schedulePrayerNotifications called');
+    AppLogger.info('schedulePrayerNotifications called');
     await initialize();
 
     // Keep stale prayer alarms from firing after the user turns
     // notifications off. Callers that still need Adhkar should
     // reschedule them after this returns.
     if (!settings.notificationsEnabled) {
-      debugPrint('[NOTIFICATION] Notifications disabled, canceling all');
+      AppLogger.info('Notifications disabled, canceling all');
       await cancelAllNotifications();
       return;
     }
@@ -370,19 +408,17 @@ class PrayerNotificationService {
     
     // Check if there's an active adhan currently playing to avoid canceling it
     final activePrayerKey = PrayerNotificationIds.activePrayerKey(prayerTimes, settings);
-    debugPrint('[NOTIFICATION] Active prayer key: $activePrayerKey');
+    AppLogger.debug('Active prayer key: $activePrayerKey');
     
     if (activePrayerKey != null) {
-      debugPrint('[NOTIFICATION] Adhan currently playing for $activePrayerKey - preserving it');
-      // Cancel all notifications except the currently playing adhan and its stop banner
+      AppLogger.info('Adhan active for $activePrayerKey - preserving it');
       await _cancelAllNotificationsExcept(activePrayerKey);
     } else {
-      debugPrint('[NOTIFICATION] No active adhan, canceling all previous notifications');
       await cancelAllNotifications();
     }
 
     final scheduleMode = await _resolveAndroidScheduleMode();
-    debugPrint('[NOTIFICATION] Android schedule mode: $scheduleMode');
+    AppLogger.debug('Android schedule mode: $scheduleMode');
 
     final todayTimes = <String, DateTime>{
       'fajr': prayerTimes.fajr,
@@ -404,6 +440,7 @@ class PrayerNotificationService {
           };
 
     final now = DateTime.now();
+    int scheduledCount = 0;
 
     for (final key in _allPrayerKeys) {
       if (settings.mutedPrayers.contains(key)) continue;
@@ -438,8 +475,10 @@ class PrayerNotificationService {
           adhanType: adhanType,
           scheduleMode: scheduleMode,
         );
+        scheduledCount++;
       }
     }
+    AppLogger.info('Scheduled $scheduledCount adhan notifications');
   }
 
   /// Schedules the Morning (Fajr + 1h) and Evening (Asr + 1h) Adhkar
@@ -519,26 +558,136 @@ class PrayerNotificationService {
   /// active-prayer detection as the Prayer page's "Adhan is playing"
   /// banner, so both always agree on what's currently active. Prayers
   /// other than the currently active one are never touched.
-  Future<void> stopActiveAdhan(PrayerTimeEntity today, PrayerTimesSettings settings) async {
+  // ── Manually-stopped Adhan persistence ──
+  // The Prayer page remembers which adhan the user stopped so it doesn't
+  // replay when the app is re-opened inside the still-active window. That
+  // in-memory flag is lost when the process dies, and the notification
+  // shade's "Stop Adhan" button is handled (often in a background isolate)
+  // without touching the page, so the stop is also persisted here. The
+  // prayer key is stored alongside a timestamp; the entry is treated as
+  // stale (and cleared) once it is older than [_manualStopTtl], well past
+  // any single adhan window, so it never suppresses a future occurrence.
+  static const String _manualStopKey = 'adhan_manually_stopped_key';
+  static const String _manualStopAtKey = 'adhan_manually_stopped_at';
+  static const Duration _manualStopTtl = Duration(minutes: 15);
 
+  /// Persists that the user manually stopped the adhan for [prayerKey].
+  static Future<void> persistManualAdhanStop(String prayerKey) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_manualStopKey, prayerKey);
+      await prefs.setString(_manualStopAtKey, DateTime.now().toIso8601String());
+    } catch (_) {}
+  }
+
+  /// Clears any persisted manual adhan stop.
+  static Future<void> clearManualAdhanStop() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_manualStopKey);
+      await prefs.remove(_manualStopAtKey);
+    } catch (_) {}
+  }
+
+  /// Returns the prayer key the user most recently manually stopped, as long
+  /// as that stop is still within [_manualStopTtl] (so it cannot suppress a
+  /// much later, unrelated occurrence). Stale stops are cleared and null
+  /// returned.
+  static Future<String?> readManualAdhanStop() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = prefs.getString(_manualStopKey);
+      if (key == null) return null;
+      final at = prefs.getString(_manualStopAtKey);
+      if (at == null) return key;
+      final stoppedAt = DateTime.tryParse(at);
+      if (stoppedAt == null) return key;
+      if (DateTime.now().difference(stoppedAt) > _manualStopTtl) {
+        await prefs.remove(_manualStopKey);
+        await prefs.remove(_manualStopAtKey);
+        return null;
+      }
+      return key;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> stopActiveAdhan(PrayerTimeEntity today, PrayerTimesSettings settings) async {
     final activeKey = PrayerNotificationIds.activePrayerKey(today, settings);
-    if (activeKey == null) return;
 
     try {
-      await _notificationsPlugin.cancel(PrayerNotificationIds.adhanId(activeKey));
-      await _notificationsPlugin.cancel(PrayerNotificationIds.stopBannerId(activeKey));
-      
-      // Also stop the audio player if it's playing
+      await _notificationsPlugin.cancel(9999);
+      for (final key in _adhanPrayerKeys) {
+        await _notificationsPlugin.cancel(PrayerNotificationIds.adhanId(key));
+      }
+
       try {
         final audioPlayer = getIt<AdhanAudioPlayer>();
         await audioPlayer.stopAdhan();
       } catch (e) {
-        debugPrint('Failed to stop audio player: $e');
+        AppLogger.error('Failed to stop audio player', error: e);
       }
-      
-      debugPrint('Stopped active adhan for $activeKey');
+
+      AppLogger.info('Stopped active adhan (activeKey: $activeKey)');
     } catch (e) {
-      debugPrint('Failed to stop active adhan: $e');
+      AppLogger.error('Failed to stop active adhan', error: e);
+    }
+  }
+
+  /// Schedules a test Adhan notification [secondsDelay] seconds in the future
+  /// using exact alarm mode to verify notification sound and channel settings.
+  Future<void> scheduleTestAdhanNotification(AdhanType adhanType, {int secondsDelay = 5}) async {
+    await initialize();
+    final soundName = _soundResourceFor('dhuhr', adhanType);
+    final scheduleMode = await _resolveAndroidScheduleMode();
+    final testTime = DateTime.now().add(Duration(seconds: secondsDelay));
+
+    final adhanAndroid = AndroidNotificationDetails(
+      'adhan_alarm_channel_${soundName}_v7',
+      'Adhan Notification Test',
+      channelDescription: 'Test channel for Adhan notification sound',
+      importance: Importance.max,
+      priority: Priority.max,
+      sound: RawResourceAndroidNotificationSound(soundName),
+      playSound: true,
+      autoCancel: false,
+      ongoing: true,
+      category: AndroidNotificationCategory.alarm,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
+      enableVibration: true,
+      fullScreenIntent: true,
+      actions: [
+        AndroidNotificationAction(
+          _actionStopAdhan,
+          'Stop Adhan',
+          cancelNotification: true,
+        ),
+      ],
+    );
+
+    final adhanIos = DarwinNotificationDetails(
+      sound: 'adhan_short.mp3',
+      presentSound: true,
+      presentAlert: true,
+      presentBadge: true,
+    );
+
+    try {
+      final tzTime = tz.TZDateTime.from(testTime, tz.local);
+      await _notificationsPlugin.zonedSchedule(
+        9999,
+        'Test Adhan Notification',
+        'It is time for Prayer (Test)',
+        tzTime,
+        NotificationDetails(android: adhanAndroid, iOS: adhanIos),
+        androidScheduleMode: scheduleMode,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'dhuhr',
+      );
+      AppLogger.info('SUCCESS: Test adhan notification scheduled in $secondsDelay seconds ($tzTime, sound=$soundName)');
+    } catch (e, st) {
+      AppLogger.error('FAILED to schedule test adhan notification', error: e, stackTrace: st);
     }
   }
 
@@ -620,14 +769,14 @@ class PrayerNotificationService {
     required AdhanType adhanType,
     required AndroidScheduleMode scheduleMode,
   }) async {
-    debugPrint('[NOTIFICATION] _scheduleAdhan called for $title at $prayerTime');
+    AppLogger.debug('_scheduleAdhan: $prayerKey ($title) at $prayerTime');
     if (!prayerTime.isAfter(now)) {
-      debugPrint('[NOTIFICATION] Skipping adhan for $title - prayer time is in the past');
+      AppLogger.debug('Skipping adhan for $prayerKey - time is in the past');
       return;
     }
 
     final soundName = _soundResourceFor(prayerKey, adhanType);
-    debugPrint('[NOTIFICATION] Using sound file: $soundName for $title');
+    AppLogger.debug('Sound: $soundName for $prayerKey');
     // iOS custom notification sounds are capped (~30s). Full Adhan files
     // exceed that, so Darwin always uses the short clip while Android
     // still plays the selected full/short/Fajr resource from res/raw.
@@ -639,55 +788,19 @@ class PrayerNotificationService {
     // change after the first schedule. Keying by sound name sidesteps
     // that by giving each variant its own channel.
     final adhanAndroid = AndroidNotificationDetails(
-      'adhan_channel_${soundName}_v2',
+      'adhan_alarm_channel_${soundName}_v7',
       l10n.prayerAdhanChannelName,
       channelDescription: l10n.prayerAdhanChannelDescription,
       importance: Importance.max,
-      priority: Priority.high,
+      priority: Priority.max,
       sound: RawResourceAndroidNotificationSound(soundName),
       playSound: true,
-      autoCancel: true,
+      autoCancel: false,
+      ongoing: true,
       category: AndroidNotificationCategory.alarm,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
       enableVibration: true,
       fullScreenIntent: true,
-    );
-
-    final adhanIos = DarwinNotificationDetails(
-      sound: '$iosSoundName.mp3',
-      presentSound: true,
-      presentAlert: true,
-      presentBadge: true,
-    );
-
-    try {
-      await _notificationsPlugin.zonedSchedule(
-        PrayerNotificationIds.adhanId(prayerKey),
-        l10n.prayerAdhanNotificationTitle(title),
-        l10n.prayerAdhanNotificationBody(title),
-        tz.TZDateTime.from(prayerTime, tz.local),
-        NotificationDetails(android: adhanAndroid, iOS: adhanIos),
-        androidScheduleMode: scheduleMode,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-        payload: prayerKey,
-        matchDateTimeComponents: DateTimeComponents.time,
-      );
-      debugPrint('[NOTIFICATION] SUCCESS: Scheduled adhan for $title at $prayerTime ($soundName)');
-    } catch (e) {
-      debugPrint('[NOTIFICATION] FAILED to schedule adhan for $title: $e');
-    }
-
-    // A second, silent, ongoing notification carrying the "Stop Adhan"
-    // action — fires alongside the sound-producing notification above
-    // and stays pinned for the duration of the Adhan.
-    final stopAndroid = AndroidNotificationDetails(
-      'adhan_stop_control_channel',
-      l10n.prayerAdhanPlayingChannelName,
-      channelDescription: l10n.prayerAdhanPlayingChannelDescription,
-      importance: Importance.high,
-      priority: Priority.high,
-      playSound: false,
-      ongoing: true,
-      autoCancel: false,
       actions: [
         AndroidNotificationAction(
           _actionStopAdhan,
@@ -697,24 +810,29 @@ class PrayerNotificationService {
       ],
     );
 
-    final stopIos = DarwinNotificationDetails(
-      presentSound: false,
+    final adhanIos = DarwinNotificationDetails(
+      sound: '$iosSoundName.mp3',
+      presentSound: true,
+      presentAlert: true,
+      presentBadge: true,
       categoryIdentifier: _categoryAdhanPlaying,
     );
 
     try {
+      final tzTime = tz.TZDateTime.from(prayerTime, tz.local);
       await _notificationsPlugin.zonedSchedule(
-        PrayerNotificationIds.stopBannerId(prayerKey),
-        l10n.prayerAdhanPlaying,
-        l10n.prayerStopAdhan,
-        tz.TZDateTime.from(prayerTime, tz.local),
-        NotificationDetails(android: stopAndroid, iOS: stopIos),
+        PrayerNotificationIds.adhanId(prayerKey),
+        l10n.prayerAdhanNotificationTitle(title),
+        l10n.prayerAdhanNotificationBody(title),
+        tzTime,
+        NotificationDetails(android: adhanAndroid, iOS: adhanIos),
         androidScheduleMode: scheduleMode,
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         payload: prayerKey,
       );
-    } catch (e) {
-      debugPrint('Failed to schedule "Stop Adhan" banner for $title: $e');
+      AppLogger.info('Adhan scheduled: $prayerKey at $tzTime (sound=$soundName, id=${PrayerNotificationIds.adhanId(prayerKey)}, mode=$scheduleMode)');
+    } catch (e, st) {
+      AppLogger.error('FAILED to schedule adhan for $prayerKey', error: e, stackTrace: st);
     }
   }
 

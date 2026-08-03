@@ -374,6 +374,32 @@ class _SettingsPageState extends State<SettingsPage> {
                   },
                 ),
                 ListTile(
+                  leading: const Icon(Icons.notifications_active_rounded),
+                  title: const Text('Test Scheduled Notification (5s)'),
+                  subtitle: const Text('Triggers real system notification in 5s'),
+                  trailing: const Icon(Icons.alarm_rounded),
+                  onTap: () async {
+                    try {
+                      final notifService = getIt<PrayerNotificationService>();
+                      await notifService.scheduleTestAdhanNotification(settings.adhanType, secondsDelay: 5);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Test Adhan notification scheduled in 5 seconds! Lock your screen or wait...'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      AppLogger.error('Failed to schedule test adhan notification', error: e);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: $e')),
+                        );
+                      }
+                    }
+                  },
+                ),
+                ListTile(
                   leading: const Icon(Icons.bug_report_rounded),
                   title: const Text('View Logs'),
                   subtitle: const Text('View recent app logs for debugging'),

@@ -1,7 +1,9 @@
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
+
+import '../../data/repositories/adhan_audio_player.dart';
 
 import 'package:ahl_jannah/l10n/generated/app_localizations.dart';
 
@@ -43,7 +45,7 @@ class PrayerPage extends StatefulWidget {
 }
 
 class _PrayerPageState extends State<PrayerPage>
-    with AutomaticKeepAliveClientMixin<PrayerPage> {
+    with AutomaticKeepAliveClientMixin<PrayerPage>, WidgetsBindingObserver {
   late final PrayerCubit _cubit;
 
   @override
@@ -51,80 +53,135 @@ class _PrayerPageState extends State<PrayerPage>
 
   /// The prayer key whose Adhan the user manually stopped, so the "Adhan
   /// is playing" banner doesn't immediately reappear for the rest of the
-  /// time window even though the window itself hasn't elapsed yet.
+  /// time window even though the window itself hasn't elapsed yet. It is
+  /// restored from [PrayerNotificationService.readManualAdhanStop] so a
+  /// stop made from the notification shade (or in a previous app session)
+  /// is honored too.
   String? _manuallyStoppedPrayerKey;
 
-  /// In-app Adhan audio player.
-  AudioPlayer? _inAppAdhanPlayer;
-  /// Tracks which prayer key is currently being played in-app.
-  String? _currentlyPlayingKey;
+  /// Whether the persisted manual-stop state has been loaded. The build
+  /// method must not auto-play an adhan before this is known, otherwise a
+  /// stale stop could be replayed on a fresh cold start.
+  bool _manualStopReady = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _cubit = getIt<PrayerCubit>();
+    _loadManualAdhanStop();
     // Force-refresh location every time the user enters the prayer page.
     _cubit.loadPrayerTimes(forceRefresh: true);
   }
 
   @override
   void dispose() {
-    _inAppAdhanPlayer?.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  /// Resolves which adhan asset to play based on prayer key.
-  String _adhanAssetFor(String prayerKey) {
-    if (prayerKey == 'fajr') return 'assets/adhan_alfajr.mp3';
-    return 'assets/adhan.mp3';
-  }
-
-  /// Starts playing the adhan audio in-app if it isn't already playing.
-  Future<void> _startInAppAdhan(String prayerKey) async {
-    if (_currentlyPlayingKey == prayerKey) return;
-    await _stopInAppAdhan();
-    _currentlyPlayingKey = prayerKey;
-    try {
-      final player = AudioPlayer();
-      _inAppAdhanPlayer = player;
-      // Use alarm context with no audio focus so the adhan is not
-      // interrupted by notifications, touch sounds, or other transient
-      // audio events — it should only stop when the user explicitly presses Stop.
-      await player.setAudioContext(AudioContext(
-        android: AudioContextAndroid(
-          usageType: AndroidUsageType.alarm,
-          audioFocus: AndroidAudioFocus.none,
-        ),
-      ));
-      await player.play(AssetSource(_adhanAssetFor(prayerKey)));
-      player.onPlayerComplete.listen((_) {
-        if (mounted) {
-          setState(() => _currentlyPlayingKey = null);
-        }
-      });
-      player.onPlayerStateChanged.listen((state) {
-        if (state == PlayerState.stopped ||
-            state == PlayerState.completed ||
-            state == PlayerState.paused) {
-          if (mounted) {
-            setState(() => _currentlyPlayingKey = null);
-          }
-        }
-      });
-    } catch (e) {
-      debugPrint('Failed to play in-app adhan: $e');
-      _currentlyPlayingKey = null;
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
+    if (lifecycle == AppLifecycleState.resumed) {
+      // A manual stop made from the notification shade is often handled in a
+      // background isolate where this app's audio player can't be reached, so
+      // re-check the persisted stop when the app comes back to the foreground.
+      _applyPersistedManualStop();
     }
   }
 
-  /// Stops any currently-playing in-app adhan.
+  /// Loads the persisted manual-stop state. If an adhan is currently playing
+  /// for the stopped prayer, it is stopped immediately so a stop made from
+  /// the notification shade (handled in a background isolate) is honored.
+  Future<void> _loadManualAdhanStop() async {
+    final stoppedKey = await PrayerNotificationService.readManualAdhanStop();
+    if (!mounted) return;
+    setState(() {
+      _manuallyStoppedPrayerKey = stoppedKey;
+      _manualStopReady = true;
+    });
+    await _applyPersistedManualStop();
+  }
+
+  /// Stops in-app audio if it is still playing for the persisted
+  /// manually-stopped prayer (the player may not have been reachable from the
+  /// background isolate that handled the notification button).
+  Future<void> _applyPersistedManualStop() async {
+    final stoppedKey = await PrayerNotificationService.readManualAdhanStop();
+    if (stoppedKey == null) return;
+    try {
+      final player = getIt<AdhanAudioPlayer>();
+      if (player.isPlaying && player.currentPrayerKey == stoppedKey) {
+        await player.stopAdhan();
+      }
+    } catch (_) {}
+  }
+
+  /// Starts playing the adhan audio in-app using AdhanAudioPlayer.
+  /// Cancels the notification first to stop its native sound, preventing
+  /// two audio sources from playing simultaneously, then re-shows a silent
+  /// notification with the "Stop Adhan" button.
+  Future<void> _startInAppAdhan(String prayerKey) async {
+    try {
+      final player = getIt<AdhanAudioPlayer>();
+      if (player.isPlaying && player.currentPrayerKey == prayerKey) return;
+
+      final l10n = AppLocalizations.of(context);
+      final settingsState = context.read<SettingsCubit>().state;
+      final adhanType = settingsState is SettingsLoadSuccess
+          ? settingsState.settings.adhanType
+          : AdhanType.full;
+
+      // Kill the notification sound FIRST — this is the fragile one that
+      // stops when the shade is pulled down. AdhanAudioPlayer will take over.
+      final plugin = FlutterLocalNotificationsPlugin();
+      await plugin.cancel(PrayerNotificationIds.adhanId(prayerKey));
+      await plugin.cancel(9999); // test notification
+
+      await player.playAdhan(prayerKey, adhanType);
+
+      if (!mounted) return;
+
+      // Re-show a SILENT ongoing notification with the "Stop Adhan" button
+      // so the user can stop from the notification shade.
+      final displayName = _prayerDisplayName(l10n, prayerKey[0].toUpperCase() + prayerKey.substring(1));
+      const silentAndroid = AndroidNotificationDetails(
+        'adhan_control_channel',
+        'Adhan Control',
+        channelDescription: 'Silent notification with Stop Adhan button',
+        importance: Importance.max,
+        priority: Priority.max,
+        playSound: false,
+        autoCancel: false,
+        ongoing: true,
+        category: AndroidNotificationCategory.alarm,
+        enableVibration: false,
+        actions: [
+          AndroidNotificationAction(
+            'stop_adhan',
+            'Stop Adhan',
+            cancelNotification: true,
+          ),
+        ],
+      );
+      await plugin.show(
+        PrayerNotificationIds.adhanId(prayerKey),
+        l10n.prayerAdhanNotificationTitle(displayName),
+        l10n.prayerAdhanNotificationBody(displayName),
+        const NotificationDetails(android: silentAndroid),
+        payload: prayerKey,
+      );
+    } catch (e) {
+      debugPrint('Failed to play in-app adhan: $e');
+    }
+  }
+
+  /// Stops any currently-playing adhan via AdhanAudioPlayer.
   Future<void> _stopInAppAdhan() async {
     try {
-      await _inAppAdhanPlayer?.stop();
-      await _inAppAdhanPlayer?.dispose();
+      final player = getIt<AdhanAudioPlayer>();
+      await player.stopAdhan();
     } catch (_) {}
-    _inAppAdhanPlayer = null;
-    _currentlyPlayingKey = null;
   }
 
   bool _isSameDay(DateTime a, DateTime b) {
@@ -659,18 +716,15 @@ class _PrayerPageState extends State<PrayerPage>
                   ? (elapsed / totalDuration).clamp(0.0, 1.0)
                   : 0.0;
 
-              final adhanPlaying = isToday && _isAdhanPlaying(state.todayTimes, state.settings);
-              if (adhanPlaying) {
+              final audioPlayerIsPlaying = getIt<AdhanAudioPlayer>().isPlaying;
+              final adhanPlaying = (isToday && _isAdhanPlaying(state.todayTimes, state.settings)) || audioPlayerIsPlaying;
+              if (_manualStopReady && adhanPlaying && !audioPlayerIsPlaying) {
                 final activeKey = PrayerNotificationIds.activePrayerKey(state.todayTimes, state.settings);
-                if (activeKey != null && _currentlyPlayingKey != activeKey) {
+                if (activeKey != null) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     _startInAppAdhan(activeKey);
                   });
                 }
-              } else if (_currentlyPlayingKey != null) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _stopInAppAdhan();
-                });
               }
 
               return GestureDetector(
@@ -846,6 +900,10 @@ class _PrayerPageState extends State<PrayerPage>
                                   setState(() {
                                     _manuallyStoppedPrayerKey = activeKey;
                                   });
+                                  if (activeKey != null) {
+                                    PrayerNotificationService
+                                        .persistManualAdhanStop(activeKey);
+                                  }
                                 },
                                 icon: const Icon(Icons.stop_rounded),
                                 label: Text(l10n.commonStop),
