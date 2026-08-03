@@ -430,7 +430,7 @@ class GetUserLocationUseCase {
       }
     } catch (_) {
       try {
-        final uri = Uri.parse('http://ip-api.com/json/');
+        final uri = Uri.parse('https://ip-api.com/json/');
         final request = await client.getUrl(uri).timeout(const Duration(seconds: 3));
         final response = await request.close();
         if (response.statusCode == 200) {
