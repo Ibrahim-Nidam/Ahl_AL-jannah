@@ -291,8 +291,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     try {
                       final intent = AndroidIntent(
                         action:
-                            'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
-                        data: 'package:${AppConstants.orgName}',
+                            'android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS',
                       );
                       await intent.launch();
                     } catch (e) {

@@ -123,8 +123,7 @@ class _StartupPermissionPromptState extends State<StartupPermissionPrompt> {
 
     try {
       final intent = AndroidIntent(
-        action: 'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
-        data: 'package:${AppConstants.orgName}',
+        action: 'android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS',
       );
       await intent.launch();
     } catch (e) {
