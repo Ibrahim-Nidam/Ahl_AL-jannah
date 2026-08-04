@@ -201,6 +201,34 @@ abstract final class QuranAyahSpanBuilder {
       }
     }
 
+    // A color boundary that falls between a lam (ل) and its following alef
+    // (ا/أ/إ/آ/ٱ) breaks the lam-alef ligature: Flutter shapes each span
+    // independently, so the pair cannot form and one of the two letters is
+    // dropped. Merge such boundaries into the lam's run so the ligature
+    // always shapes. Diacritical marks (fatha, etc.) may sit between the
+    // lam and the alef, so look backward past them when deciding.
+    const lam = 0x0644;
+    final alefs = {0x0622, 0x0623, 0x0625, 0x0627, 0x0671};
+    final combining = RegExp(
+      r'[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E8\u06EA-\u06ED\u0640]',
+    );
+    for (var i = 1; i < formattedText.length; i++) {
+      if (colors[i] == colors[i - 1]) continue;
+      final ch = formattedText.codeUnitAt(i);
+      if (!alefs.contains(ch)) continue;
+      // Walk backward from i-1 over combining marks to find the base letter.
+      var k = i - 1;
+      while (k >= 0 && combining.hasMatch(formattedText[k])) {
+        k--;
+      }
+      if (k >= 0 && formattedText.codeUnitAt(k) == lam) {
+        // Merge this alef (and any marks before it) into the lam's color.
+        for (var m = k + 1; m <= i; m++) {
+          colors[m] = colors[k];
+        }
+      }
+    }
+
     final spans = <TextSpan>[];
     var i = 0;
     while (i < formattedText.length) {

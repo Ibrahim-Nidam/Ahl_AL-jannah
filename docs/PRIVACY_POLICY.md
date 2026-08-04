@@ -49,7 +49,4 @@ We may update this Privacy Policy from time to time. Any changes will be reflect
 
 If you have any questions about this Privacy Policy, please contact:
 
-**Ibrahim Nidam**
-Publisher of **Ahl Jannah** (support email: *add yours here, e.g. support@ahljannah.com*)
-
-**A live URL for this policy is required by Google Play before publishing.** Host this page (e.g. on GitHub Pages, or your own site) and enter that link in the Play Console. Do not submit this file directly as the link — it must be a publicly accessible web page.
+Publisher of **Ahl Jannah** (support email: *labs.jannah0@gmail.com*)

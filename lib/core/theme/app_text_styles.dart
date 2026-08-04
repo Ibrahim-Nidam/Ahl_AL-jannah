@@ -16,6 +16,21 @@ abstract final class AppTextStyles {
     'Arial',
   ];
 
+  /// The Uthmani Hafs v2 font encodes its letter joins and the lam-alef
+  /// ligature as Contextual Alternates (`calt`). It must stay enabled or
+  /// lam-alef collapses (the alef renders without the lam). To avoid
+  /// hiding letters, the ayah text must NOT be split between a lam and its
+  /// following alef when tajweed coloring breaks the text into spans (see
+  /// [QuranAyahSpanBuilder]).
+  ///
+  /// OpenType features applied to Arabic runs. The full standard set is
+  /// kept for every font so joins and ligatures shape correctly.
+  static const List<FontFeature> _arabicFontFeatures = [
+    FontFeature.enable('liga'),
+    FontFeature.enable('calt'),
+    FontFeature.enable('rlig'),
+  ];
+
   // ── Arabic Styles ──
 
   /// Primary Arabic text style for Quran ayahs.
@@ -31,11 +46,7 @@ abstract final class AppTextStyles {
     fontWeight: FontWeight.w400,
     letterSpacing: 0,
     locale: const Locale('ar'),
-    fontFeatures: const [
-      FontFeature.enable('liga'),
-      FontFeature.enable('calt'),
-      FontFeature.enable('rlig'),
-    ],
+    fontFeatures: _arabicFontFeatures,
   );
 
   /// Arabic text for adhkar, hadith, and general Islamic content.
@@ -50,11 +61,7 @@ abstract final class AppTextStyles {
     height: 1.8,
     fontWeight: FontWeight.w400,
     locale: const Locale('ar'),
-    fontFeatures: const [
-      FontFeature.enable('liga'),
-      FontFeature.enable('calt'),
-      FontFeature.enable('rlig'),
-    ],
+    fontFeatures: _arabicFontFeatures,
   );
 
   /// Bold Arabic text for surah names and headings.
@@ -69,11 +76,7 @@ abstract final class AppTextStyles {
     height: 1.6,
     fontWeight: FontWeight.w700,
     locale: const Locale('ar'),
-    fontFeatures: const [
-      FontFeature.enable('liga'),
-      FontFeature.enable('calt'),
-      FontFeature.enable('rlig'),
-    ],
+    fontFeatures: _arabicFontFeatures,
   );
 
   // ── Latin / Translation Styles ──

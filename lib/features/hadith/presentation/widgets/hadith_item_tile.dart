@@ -1,4 +1,3 @@
-import 'package:ahl_jannah/features/settings/domain/entities/settings_entities.dart';
 import 'package:ahl_jannah/features/settings/presentation/bloc/settings_cubit.dart';
 import 'package:ahl_jannah/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -32,9 +31,6 @@ class _HadithItemTileState extends State<HadithItemTile> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final settingsState = context.watch<SettingsCubit>().state;
-    final quranFont = settingsState is SettingsLoadSuccess
-        ? settingsState.settings.quranFont
-        : QuranFont.uthmanic;
     final arabicFontSize = settingsState is SettingsLoadSuccess
         ? settingsState.settings.arabicFontSize
         : 28.0;
@@ -97,8 +93,6 @@ class _HadithItemTileState extends State<HadithItemTile> {
               style:
                   AppTextStyles.arabicBody(
                     fontSize: arabicFontSize,
-                    fontFamily: quranFont.fontFamily,
-                    fontFamilyFallback: quranFont.fontFamilyFallback,
                   ).copyWith(
                     color: isDark
                         ? AppColors.onSurfaceDark

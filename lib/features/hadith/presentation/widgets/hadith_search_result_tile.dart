@@ -1,8 +1,5 @@
-import 'package:ahl_jannah/features/settings/domain/entities/settings_entities.dart';
-import 'package:ahl_jannah/features/settings/presentation/bloc/settings_cubit.dart';
 import 'package:ahl_jannah/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -28,11 +25,6 @@ class HadithSearchResultTile extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final settingsState = context.watch<SettingsCubit>().state;
-    final quranFont = settingsState is SettingsLoadSuccess
-        ? settingsState.settings.quranFont
-        : QuranFont.uthmanic;
 
     final item = result.item;
 
@@ -61,8 +53,6 @@ class HadithSearchResultTile extends StatelessWidget {
                   style:
                       AppTextStyles.arabicBody(
                         fontSize: 18,
-                        fontFamily: quranFont.fontFamily,
-                        fontFamilyFallback: quranFont.fontFamilyFallback,
                       ).copyWith(
                         color: isDark
                             ? AppColors.onSurfaceDark
