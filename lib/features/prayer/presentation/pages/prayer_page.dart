@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../data/repositories/adhan_audio_player.dart';
@@ -8,6 +9,7 @@ import '../../data/repositories/adhan_audio_player.dart';
 import 'package:ahl_jannah/l10n/generated/app_localizations.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/extensions.dart';
@@ -126,6 +128,14 @@ class _PrayerPageState extends State<PrayerPage>
       final player = getIt<AdhanAudioPlayer>();
       if (player.isPlaying && player.currentPrayerKey == prayerKey) return;
 
+      // Respect the user's per-prayer sound choice — never play the audio
+      // in-app for a prayer that has been silenced.
+      final prayerState = _cubit.state;
+      if (prayerState is PrayerLoadSuccess &&
+          !prayerState.settings.prayerHasSound(prayerKey)) {
+        return;
+      }
+
       final l10n = AppLocalizations.of(context);
       final settingsState = context.read<SettingsCubit>().state;
       final adhanType = settingsState is SettingsLoadSuccess
@@ -237,7 +247,10 @@ class _PrayerPageState extends State<PrayerPage>
             date: yesterday,
             settings: settings,
           );
-          return yesterdayTimes.isha;
+          if (yesterdayTimes != null) return yesterdayTimes.isha;
+          // Yesterday's data isn't available — approximate so the progress
+          // bar still renders; this is display-only.
+          return today.fajr.subtract(const Duration(hours: 2));
         }
         return today.isha;
       case 'Sunrise':
@@ -265,356 +278,17 @@ class _PrayerPageState extends State<PrayerPage>
   }
 
   void _showSettingsBottomSheet(BuildContext context, PrayerLoadSuccess state) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: context.isDarkMode
           ? AppColors.surfaceDarkVariant
           : AppColors.surfaceLightVariant,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) {
-        return BlocBuilder<PrayerCubit, PrayerState>(
-          bloc: _cubit,
-          builder: (context, cubitState) {
-            if (cubitState is! PrayerLoadSuccess) return const SizedBox.shrink();
-            final settings = cubitState.settings;
-            final l10n = AppLocalizations.of(context);
-
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
-                top: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withAlpha(100),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      l10n.prayerSettingsTitle,
-                      style: AppTextStyles.headingMedium.copyWith(
-                        color: context.isDarkMode
-                            ? AppColors.onSurfaceDark
-                            : AppColors.onSurfaceLight,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        l10n.prayerEnableNotifications,
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: context.isDarkMode
-                              ? AppColors.onSurfaceDark
-                              : AppColors.onSurfaceLight,
-                        ),
-                      ),
-                      subtitle: Text(
-                        l10n.prayerEnableNotificationsSubtitle,
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: context.isDarkMode
-                              ? AppColors.onSurfaceDarkVariant
-                              : AppColors.onSurfaceLightVariant,
-                        ),
-                      ),
-                      value: settings.notificationsEnabled,
-                      activeThumbColor: AppColors.primaryGreen,
-                      activeTrackColor: AppColors.primaryGreen.withAlpha(80),
-                      onChanged: (val) {
-                        _cubit.toggleNotifications(val);
-                      },
-                    ),
-
-                    if (settings.notificationsEnabled) ...[
-                      const Divider(height: 24),
-                      Text(
-                        l10n.prayerReminderBefore,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: context.isDarkMode
-                              ? AppColors.onSurfaceDark
-                              : AppColors.onSurfaceLight,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SegmentedButton<int>(
-                        segments: [
-                          ButtonSegment(
-                            value: 5,
-                            label: Text(l10n.prayerReminder5Min),
-                          ),
-                          ButtonSegment(
-                            value: 15,
-                            label: Text(l10n.prayerReminder15Min),
-                          ),
-                        ],
-                        selected: {settings.reminderInterval},
-                        onSelectionChanged: (newSelection) {
-                          _cubit.setReminderInterval(newSelection.first);
-                        },
-                        style: ButtonStyle(
-                          backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                            (states) {
-                              if (states.contains(WidgetState.selected)) {
-                                return AppColors.primaryGreen;
-                              }
-                              return Colors.transparent;
-                            },
-                          ),
-                          foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                            (states) {
-                              if (states.contains(WidgetState.selected)) {
-                                return Colors.white;
-                              }
-                              return context.isDarkMode
-                                  ? Colors.white70
-                                  : Colors.black87;
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-
-                    const Divider(height: 32),
-
-                    Text(
-                      l10n.prayerAdhanSound,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: context.isDarkMode
-                            ? AppColors.onSurfaceDark
-                            : AppColors.onSurfaceLight,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      l10n.prayerFajrAdhanHint,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: context.isDarkMode
-                            ? AppColors.onSurfaceDarkVariant
-                            : AppColors.onSurfaceLightVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    BlocBuilder<SettingsCubit, SettingsState>(
-                      builder: (context, settingsState) {
-                        final adhanType = settingsState is SettingsLoadSuccess
-                            ? settingsState.settings.adhanType
-                            : AdhanType.full;
-
-                        return SegmentedButton<AdhanType>(
-                          segments: [
-                            ButtonSegment(
-                              value: AdhanType.full,
-                              label: Text(l10n.prayerFullAdhan),
-                            ),
-                            ButtonSegment(
-                              value: AdhanType.short,
-                              label: Text(l10n.prayerShortAdhan),
-                            ),
-                          ],
-                          selected: {adhanType},
-                          onSelectionChanged: (newSelection) async {
-                            await context
-                                .read<SettingsCubit>()
-                                .setAdhanType(newSelection.first);
-                            await _cubit.loadPrayerTimes(
-                              date: cubitState.selectedDate,
-                            );
-                          },
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                              (states) {
-                                if (states.contains(WidgetState.selected)) {
-                                  return AppColors.primaryGreen;
-                                }
-                                return Colors.transparent;
-                              },
-                            ),
-                            foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                              (states) {
-                                if (states.contains(WidgetState.selected)) {
-                                  return Colors.white;
-                                }
-                                return context.isDarkMode
-                                    ? Colors.white70
-                                    : Colors.black87;
-                              },
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-
-                    const Divider(height: 32),
-
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        l10n.prayerAutomaticMethod,
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: context.isDarkMode
-                              ? AppColors.onSurfaceDark
-                              : AppColors.onSurfaceLight,
-                        ),
-                      ),
-                      subtitle: Text(
-                        l10n.prayerAutomaticMethodSubtitle,
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: context.isDarkMode
-                              ? AppColors.onSurfaceDarkVariant
-                              : AppColors.onSurfaceLightVariant,
-                        ),
-                      ),
-                      value: settings.useAutomaticMethod,
-                      activeThumbColor: AppColors.primaryGreen,
-                      activeTrackColor: AppColors.primaryGreen.withAlpha(80),
-                      onChanged: (val) {
-                        final newSettings = settings.copyWith(
-                          useAutomaticMethod: val,
-                          manualMethodId: val ? null : 3,
-                        );
-                        _cubit.updateSettings(newSettings);
-                      },
-                    ),
-
-                    if (!settings.useAutomaticMethod) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        l10n.prayerCalculationMethod,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: context.isDarkMode
-                              ? AppColors.onSurfaceDark
-                              : AppColors.onSurfaceLight,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: context.isDarkMode
-                              ? AppColors.cardDark
-                              : AppColors.cardLight,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: context.isDarkMode
-                                ? AppColors.dividerDark
-                                : AppColors.divider.withAlpha(100),
-                          ),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<int>(
-                            isExpanded: true,
-                            dropdownColor: context.isDarkMode
-                                ? AppColors.surfaceDarkVariant
-                                : AppColors.surfaceLightVariant,
-                            value: settings.manualMethodId ?? 3,
-                            items: aladhanMethods.map((method) {
-                              return DropdownMenuItem(
-                                value: method.id,
-                                child: Text(
-                                  method.name,
-                                  style: AppTextStyles.bodyMedium.copyWith(
-                                    color: context.isDarkMode
-                                        ? AppColors.onSurfaceDark
-                                        : AppColors.onSurfaceLight,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (newMethodId) {
-                              if (newMethodId != null) {
-                                final newSettings = settings.copyWith(
-                                  useAutomaticMethod: false,
-                                  manualMethodId: newMethodId,
-                                );
-                                _cubit.updateSettings(newSettings);
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-
-                    const Divider(height: 32),
-
-                    Text(
-                      l10n.prayerMadhab,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: context.isDarkMode
-                            ? AppColors.onSurfaceDark
-                            : AppColors.onSurfaceLight,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SegmentedButton<int>(
-                      segments: [
-                        ButtonSegment(
-                          value: 0,
-                          label: Text(l10n.prayerMadhabStandard),
-                        ),
-                        ButtonSegment(
-                          value: 1,
-                          label: Text(l10n.prayerMadhabHanafi),
-                        ),
-                      ],
-                      selected: {settings.madhab},
-                      onSelectionChanged: (newSelection) {
-                        final newSettings = settings.copyWith(
-                          madhab: newSelection.first,
-                        );
-                        _cubit.updateSettings(newSettings);
-                      },
-                      style: ButtonStyle(
-                        backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                          (states) {
-                            if (states.contains(WidgetState.selected)) {
-                              return AppColors.primaryGreen;
-                            }
-                            return Colors.transparent;
-                          },
-                        ),
-                        foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                          (states) {
-                            if (states.contains(WidgetState.selected)) {
-                              return Colors.white;
-                            }
-                            return context.isDarkMode
-                                ? Colors.white70
-                                : Colors.black87;
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+      builder: (context) => _PrayerSettingsSheet(cubit: _cubit),
     );
   }
 
@@ -717,14 +391,14 @@ class _PrayerPageState extends State<PrayerPage>
                   : 0.0;
 
               final audioPlayerIsPlaying = getIt<AdhanAudioPlayer>().isPlaying;
+              final activePrayerKey = PrayerNotificationIds.activePrayerKey(state.todayTimes, state.settings);
               final adhanPlaying = (isToday && _isAdhanPlaying(state.todayTimes, state.settings)) || audioPlayerIsPlaying;
-              if (_manualStopReady && adhanPlaying && !audioPlayerIsPlaying) {
-                final activeKey = PrayerNotificationIds.activePrayerKey(state.todayTimes, state.settings);
-                if (activeKey != null) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _startInAppAdhan(activeKey);
-                  });
-                }
+              final soundEnabled = activePrayerKey != null &&
+                  state.settings.prayerHasSound(activePrayerKey);
+              if (_manualStopReady && soundEnabled && adhanPlaying && !audioPlayerIsPlaying) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _startInAppAdhan(activePrayerKey);
+                });
               }
 
               return GestureDetector(
@@ -1089,7 +763,7 @@ class _PrayerPageState extends State<PrayerPage>
     final timeStr = TimeOfDay.fromDateTime(time).format(context);
     final key = name.toLowerCase();
     final isMuted = settings.mutedPrayers.contains(key);
-    const showMute = true;
+    final hasSound = settings.prayerHasSound(key);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -1142,26 +816,508 @@ class _PrayerPageState extends State<PrayerPage>
                       : (isDark ? AppColors.onSurfaceDark : AppColors.onSurfaceLight),
                 ),
               ),
-              if (showMute) ...[
-                const SizedBox(width: 12),
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(
-                    isMuted ? Icons.notifications_off_rounded : Icons.notifications_active_rounded,
-                    color: isMuted
-                        ? (isDark ? Colors.white38 : Colors.black38)
-                        : (isNext ? AppColors.primaryGreen : AppColors.accentGold),
-                    size: 20,
-                  ),
-                  onPressed: () => _cubit.togglePrayerMute(key),
-                  tooltip: isMuted ? l10n.prayerUnmuteAdhan : l10n.prayerMuteAdhan,
+              const SizedBox(width: 12),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(
+                  isMuted ? Icons.notifications_off_rounded : Icons.notifications_active_rounded,
+                  color: isMuted
+                      ? (isDark ? Colors.white38 : Colors.black38)
+                      : (isNext ? AppColors.primaryGreen : AppColors.accentGold),
+                  size: 20,
                 ),
-              ],
+                onPressed: () => _cubit.togglePrayerMute(key),
+                tooltip: isMuted ? l10n.prayerUnmuteAdhan : l10n.prayerMuteAdhan,
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(
+                  hasSound ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+                  color: hasSound
+                      ? (isNext ? AppColors.primaryGreen : AppColors.accentGold)
+                      : (isDark ? Colors.white38 : Colors.black38),
+                  size: 20,
+                ),
+                onPressed: () => _cubit.togglePrayerSound(key),
+                tooltip: hasSound
+                    ? l10n.prayerMuteAdhanSound
+                    : l10n.prayerUnmuteAdhanSound,
+              ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Bottom-sheet content for the prayer settings. Height is capped so the
+/// panel never fills the screen, it always shows a visible close button and
+/// a pinned "Done" button, and it dismisses itself automatically when the
+/// user navigates away from the prayer tab.
+class _PrayerSettingsSheet extends StatefulWidget {
+  const _PrayerSettingsSheet({required this.cubit});
+
+  final PrayerCubit cubit;
+
+  @override
+  State<_PrayerSettingsSheet> createState() => _PrayerSettingsSheetState();
+}
+
+class _PrayerSettingsSheetState extends State<_PrayerSettingsSheet> {
+  @override
+  void initState() {
+    super.initState();
+    // Dismiss the sheet whenever the user leaves the prayer tab, so the
+    // panel never lingers over another screen.
+    GoRouter.of(context).routerDelegate.addListener(_onRouteChanged);
+  }
+
+  @override
+  void dispose() {
+    GoRouter.of(context).routerDelegate.removeListener(_onRouteChanged);
+    super.dispose();
+  }
+
+  void _onRouteChanged() {
+    final location = GoRouter.of(context).state.matchedLocation;
+    if (!location.startsWith(AppRoutes.prayer) && mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  void _close() => Navigator.of(context).pop();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<PrayerCubit, PrayerState>(
+      bloc: widget.cubit,
+      builder: (context, cubitState) {
+        if (cubitState is! PrayerLoadSuccess) return const SizedBox.shrink();
+        final settings = cubitState.settings;
+        final l10n = AppLocalizations.of(context);
+        final isDark = context.isDarkMode;
+        final maxHeight = MediaQuery.sizeOf(context).height * 0.85;
+
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── Header: drag handle + title + close button ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 8, 0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Center(
+                            child: Container(
+                              width: 40,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.withAlpha(100),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            l10n.prayerSettingsTitle,
+                            style: AppTextStyles.headingMedium.copyWith(
+                              color: isDark
+                                  ? AppColors.onSurfaceDark
+                                  : AppColors.onSurfaceLight,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _close,
+                      icon: const Icon(Icons.close_rounded),
+                      color: isDark
+                          ? AppColors.onSurfaceDark
+                          : AppColors.onSurfaceLight,
+                      tooltip: l10n.commonClose,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // ── Scrollable settings body ──
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          l10n.prayerEnableNotifications,
+                          style: AppTextStyles.bodyLarge.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? AppColors.onSurfaceDark
+                                : AppColors.onSurfaceLight,
+                          ),
+                        ),
+                        subtitle: Text(
+                          l10n.prayerEnableNotificationsSubtitle,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: isDark
+                                ? AppColors.onSurfaceDarkVariant
+                                : AppColors.onSurfaceLightVariant,
+                          ),
+                        ),
+                        value: settings.notificationsEnabled,
+                        activeThumbColor: AppColors.primaryGreen,
+                        activeTrackColor: AppColors.primaryGreen.withAlpha(80),
+                        onChanged: (val) {
+                          widget.cubit.toggleNotifications(val);
+                        },
+                      ),
+
+                      const Divider(height: 24),
+
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          l10n.prayerAdhanSoundToggle,
+                          style: AppTextStyles.bodyLarge.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? AppColors.onSurfaceDark
+                                : AppColors.onSurfaceLight,
+                          ),
+                        ),
+                        subtitle: Text(
+                          l10n.prayerAdhanSoundToggleSubtitle,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: isDark
+                                ? AppColors.onSurfaceDarkVariant
+                                : AppColors.onSurfaceLightVariant,
+                          ),
+                        ),
+                        value: settings.adhanSoundEnabled,
+                        activeThumbColor: AppColors.primaryGreen,
+                        activeTrackColor: AppColors.primaryGreen.withAlpha(80),
+                        onChanged: (val) {
+                          widget.cubit.toggleAdhanSound(val);
+                        },
+                      ),
+
+                      if (settings.notificationsEnabled) ...[
+                        const Divider(height: 24),
+                        Text(
+                          l10n.prayerReminderBefore,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? AppColors.onSurfaceDark
+                                : AppColors.onSurfaceLight,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SegmentedButton<int>(
+                          segments: [
+                            ButtonSegment(
+                              value: 5,
+                              label: Text(l10n.prayerReminder5Min),
+                            ),
+                            ButtonSegment(
+                              value: 15,
+                              label: Text(l10n.prayerReminder15Min),
+                            ),
+                          ],
+                          selected: {settings.reminderInterval},
+                          onSelectionChanged: (newSelection) {
+                            widget.cubit
+                                .setReminderInterval(newSelection.first);
+                          },
+                          style: ButtonStyle(
+                            backgroundColor:
+                                WidgetStateProperty.resolveWith<Color>(
+                              (states) {
+                                if (states.contains(WidgetState.selected)) {
+                                  return AppColors.primaryGreen;
+                                }
+                                return Colors.transparent;
+                              },
+                            ),
+                            foregroundColor:
+                                WidgetStateProperty.resolveWith<Color>(
+                              (states) {
+                                if (states.contains(WidgetState.selected)) {
+                                  return Colors.white;
+                                }
+                                return isDark ? Colors.white70 : Colors.black87;
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      const Divider(height: 32),
+
+                      Text(
+                        l10n.prayerAdhanSound,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? AppColors.onSurfaceDark
+                              : AppColors.onSurfaceLight,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        l10n.prayerFajrAdhanHint,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: isDark
+                              ? AppColors.onSurfaceDarkVariant
+                              : AppColors.onSurfaceLightVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      BlocBuilder<SettingsCubit, SettingsState>(
+                        builder: (context, settingsState) {
+                          final adhanType = settingsState is SettingsLoadSuccess
+                              ? settingsState.settings.adhanType
+                              : AdhanType.full;
+
+                          return SegmentedButton<AdhanType>(
+                            segments: [
+                              ButtonSegment(
+                                value: AdhanType.full,
+                                label: Text(l10n.prayerFullAdhan),
+                              ),
+                              ButtonSegment(
+                                value: AdhanType.short,
+                                label: Text(l10n.prayerShortAdhan),
+                              ),
+                            ],
+                            selected: {adhanType},
+                            onSelectionChanged: (newSelection) async {
+                              await context
+                                  .read<SettingsCubit>()
+                                  .setAdhanType(newSelection.first);
+                              await widget.cubit.loadPrayerTimes(
+                                date: cubitState.selectedDate,
+                              );
+                            },
+                            style: ButtonStyle(
+                              backgroundColor:
+                                  WidgetStateProperty.resolveWith<Color>(
+                                (states) {
+                                  if (states.contains(WidgetState.selected)) {
+                                    return AppColors.primaryGreen;
+                                  }
+                                  return Colors.transparent;
+                                },
+                              ),
+                              foregroundColor:
+                                  WidgetStateProperty.resolveWith<Color>(
+                                (states) {
+                                  if (states.contains(WidgetState.selected)) {
+                                    return Colors.white;
+                                  }
+                                  return isDark
+                                      ? Colors.white70
+                                      : Colors.black87;
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+
+                      const Divider(height: 32),
+
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          l10n.prayerAutomaticMethod,
+                          style: AppTextStyles.bodyLarge.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? AppColors.onSurfaceDark
+                                : AppColors.onSurfaceLight,
+                          ),
+                        ),
+                        subtitle: Text(
+                          l10n.prayerAutomaticMethodSubtitle,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: isDark
+                                ? AppColors.onSurfaceDarkVariant
+                                : AppColors.onSurfaceLightVariant,
+                          ),
+                        ),
+                        value: settings.useAutomaticMethod,
+                        activeThumbColor: AppColors.primaryGreen,
+                        activeTrackColor: AppColors.primaryGreen.withAlpha(80),
+                        onChanged: (val) {
+                          final newSettings = settings.copyWith(
+                            useAutomaticMethod: val,
+                            manualMethodId: val ? null : 3,
+                          );
+                          widget.cubit.updateSettings(newSettings);
+                        },
+                      ),
+
+                      if (!settings.useAutomaticMethod) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          l10n.prayerCalculationMethod,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? AppColors.onSurfaceDark
+                                : AppColors.onSurfaceLight,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? AppColors.cardDark
+                                : AppColors.cardLight,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isDark
+                                  ? AppColors.dividerDark
+                                  : AppColors.divider.withAlpha(100),
+                            ),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<int>(
+                              isExpanded: true,
+                              dropdownColor: isDark
+                                  ? AppColors.surfaceDarkVariant
+                                  : AppColors.surfaceLightVariant,
+                              value: settings.manualMethodId ?? 3,
+                              items: aladhanMethods.map((method) {
+                                return DropdownMenuItem(
+                                  value: method.id,
+                                  child: Text(
+                                    method.name,
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      color: isDark
+                                          ? AppColors.onSurfaceDark
+                                          : AppColors.onSurfaceLight,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (newMethodId) {
+                                if (newMethodId != null) {
+                                  final newSettings = settings.copyWith(
+                                    useAutomaticMethod: false,
+                                    manualMethodId: newMethodId,
+                                  );
+                                  widget.cubit.updateSettings(newSettings);
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      const Divider(height: 32),
+
+                      Text(
+                        l10n.prayerMadhab,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? AppColors.onSurfaceDark
+                              : AppColors.onSurfaceLight,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SegmentedButton<int>(
+                        segments: [
+                          ButtonSegment(
+                            value: 0,
+                            label: Text(l10n.prayerMadhabStandard),
+                          ),
+                          ButtonSegment(
+                            value: 1,
+                            label: Text(l10n.prayerMadhabHanafi),
+                          ),
+                        ],
+                        selected: {settings.madhab},
+                        onSelectionChanged: (newSelection) {
+                          final newSettings = settings.copyWith(
+                            madhab: newSelection.first,
+                          );
+                          widget.cubit.updateSettings(newSettings);
+                        },
+                        style: ButtonStyle(
+                          backgroundColor:
+                              WidgetStateProperty.resolveWith<Color>(
+                            (states) {
+                              if (states.contains(WidgetState.selected)) {
+                                return AppColors.primaryGreen;
+                              }
+                              return Colors.transparent;
+                            },
+                          ),
+                          foregroundColor:
+                              WidgetStateProperty.resolveWith<Color>(
+                            (states) {
+                              if (states.contains(WidgetState.selected)) {
+                                return Colors.white;
+                              }
+                              return isDark ? Colors.white70 : Colors.black87;
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── Pinned "Done" button ──
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                  child: FilledButton(
+                    onPressed: _close,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: Text(
+                      l10n.commonDone,
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

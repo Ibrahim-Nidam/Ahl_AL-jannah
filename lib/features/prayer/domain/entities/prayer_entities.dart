@@ -13,7 +13,21 @@ class UserLocation {
 
 /// Stores local prayer calculation and notification configurations.
 class PrayerTimesSettings {
+  /// Master switch for prayer alerts (reminders + adhan notifications).
   final bool notificationsEnabled;
+
+  /// Whether prayer alerts make a sound. When `false`, prayer alerts are
+  /// delivered as silent notifications (no adhan audio, no reminder sound)
+  /// so the user can get the notification without being forced to hear it.
+  /// Per-prayer exceptions live in [silentPrayers].
+  final bool adhanSoundEnabled;
+
+  /// Prayers (e.g. 'fajr', 'isha') that keep their notifications but are
+  /// silenced individually — an adhan that still shows but plays no sound.
+  /// Combined with [adhanSoundEnabled] it forms the effective per-prayer
+  /// sound: `adhanSoundEnabled && !silentPrayers.contains(key)`.
+  final List<String> silentPrayers;
+
   final int reminderInterval; // 5 or 15 minutes
   final List<String> mutedPrayers; // List of prayer names that are muted
   final bool useAutomaticMethod; // Use location-based estimation
@@ -22,6 +36,8 @@ class PrayerTimesSettings {
 
   const PrayerTimesSettings({
     required this.notificationsEnabled,
+    required this.adhanSoundEnabled,
+    required this.silentPrayers,
     required this.reminderInterval,
     required this.mutedPrayers,
     required this.useAutomaticMethod,
@@ -32,6 +48,8 @@ class PrayerTimesSettings {
   factory PrayerTimesSettings.defaultSettings() {
     return const PrayerTimesSettings(
       notificationsEnabled: true,
+      adhanSoundEnabled: true,
+      silentPrayers: [],
       reminderInterval: 5,
       mutedPrayers: [],
       useAutomaticMethod: true,
@@ -42,6 +60,8 @@ class PrayerTimesSettings {
 
   PrayerTimesSettings copyWith({
     bool? notificationsEnabled,
+    bool? adhanSoundEnabled,
+    List<String>? silentPrayers,
     int? reminderInterval,
     List<String>? mutedPrayers,
     bool? useAutomaticMethod,
@@ -50,12 +70,20 @@ class PrayerTimesSettings {
   }) {
     return PrayerTimesSettings(
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      adhanSoundEnabled: adhanSoundEnabled ?? this.adhanSoundEnabled,
+      silentPrayers: silentPrayers ?? this.silentPrayers,
       reminderInterval: reminderInterval ?? this.reminderInterval,
       mutedPrayers: mutedPrayers ?? this.mutedPrayers,
       useAutomaticMethod: useAutomaticMethod ?? this.useAutomaticMethod,
       manualMethodId: useAutomaticMethod == true ? null : (manualMethodId ?? this.manualMethodId),
       madhab: madhab ?? this.madhab,
     );
+  }
+
+  /// Effective sound for a single prayer: the global adhan-sound master
+  /// switch, minus any per-prayer silence exceptions.
+  bool prayerHasSound(String prayerKey) {
+    return adhanSoundEnabled && !silentPrayers.contains(prayerKey);
   }
 }
 

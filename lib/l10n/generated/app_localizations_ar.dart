@@ -513,6 +513,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get prayerUnmuteAdhan => 'إلغاء كتم الأذان';
 
   @override
+  String get prayerMuteAdhanSound => 'كتم صوت أذان هذه الصلاة';
+
+  @override
+  String get prayerUnmuteAdhanSound => 'تشغيل صوت أذان هذه الصلاة';
+
+  @override
   String get prayerPreviousDay => 'اليوم السابق';
 
   @override
@@ -553,6 +559,30 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get prayerAdhanChannelDescription => 'يعمل الأذان عند وقت الصلاة';
+
+  @override
+  String get prayerAdhanSoundToggle => 'صوت الأذان';
+
+  @override
+  String get prayerAdhanSoundToggleSubtitle =>
+      'تشغيل الأذان عند وقت الصلاة. أوقفه للحصول على تنبيهات صامتة فقط.';
+
+  @override
+  String get prayerAlertsSectionTitle => 'تنبيهات الصلاة';
+
+  @override
+  String get prayerAlertsSectionDescription =>
+      'الإشعارات والصوت خياران منفصلان.';
+
+  @override
+  String get prayerExactAlarmTileTitle => 'الوصول إلى المنبه الدقيق';
+
+  @override
+  String get prayerExactAlarmEnabled => 'ممكَّن — التنبيهات تصل في وقتها';
+
+  @override
+  String get prayerExactAlarmDisabled =>
+      'معطَّل — قد تتأخر التنبيهات. اضغط للتفعيل';
 
   @override
   String get prayerAdhanPlayingChannelName => 'الأذان يعمل';

@@ -356,6 +356,20 @@ class PrayerNotificationService {
     }
   }
 
+  /// Whether this device currently allows exact alarms (Android 12+).
+  /// Exposed so the Settings screen can surface a "Fix prayer alerts"
+  /// action when exact scheduling is unavailable (which would otherwise
+  /// make notifications fire late).
+  Future<bool> canScheduleExactAlarms() async {
+    try {
+      final androidImpl = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      return await androidImpl?.canScheduleExactNotifications() ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Cancels all notifications except the currently playing adhan.
   /// This prevents interrupting adhan playback when scheduling new notifications.
   Future<void> _cancelAllNotificationsExcept(String activePrayerKey) async {
@@ -392,7 +406,7 @@ class PrayerNotificationService {
     required AppLanguage language,
     PrayerTimeEntity? nextDayTimes,
   }) async {
-    AppLogger.info('schedulePrayerNotifications called');
+    AppLogger.info('schedulePrayerNotifications called (sound=${settings.adhanSoundEnabled})');
     await initialize();
 
     // Keep stale prayer alarms from firing after the user turns
@@ -450,6 +464,9 @@ class PrayerNotificationService {
         now: now,
       );
       final title = _displayName(l10n, key);
+      // Per-prayer sound: the global adhan-sound switch minus prayers the
+      // user has individually silenced (settings.silentPrayers).
+      final playSound = settings.prayerHasSound(key);
 
       await _scheduleReminder(
         l10n: l10n,
@@ -459,6 +476,7 @@ class PrayerNotificationService {
         now: now,
         reminderMinutes: settings.reminderInterval,
         scheduleMode: scheduleMode,
+        playSound: playSound,
       );
 
       // Don't reschedule the adhan for the currently active prayer —
@@ -474,11 +492,12 @@ class PrayerNotificationService {
           now: now,
           adhanType: adhanType,
           scheduleMode: scheduleMode,
+          playSound: playSound,
         );
         scheduledCount++;
       }
     }
-    AppLogger.info('Scheduled $scheduledCount adhan notifications');
+    AppLogger.info('Scheduled $scheduledCount adhan notifications (sound=${settings.adhanSoundEnabled})');
   }
 
   /// Schedules the Morning (Fajr + 1h) and Evening (Asr + 1h) Adhkar
@@ -637,25 +656,33 @@ class PrayerNotificationService {
 
   /// Schedules a test Adhan notification [secondsDelay] seconds in the future
   /// using exact alarm mode to verify notification sound and channel settings.
-  Future<void> scheduleTestAdhanNotification(AdhanType adhanType, {int secondsDelay = 5}) async {
+  Future<void> scheduleTestAdhanNotification(
+    AdhanType adhanType, {
+    int secondsDelay = 5,
+    bool playSound = true,
+  }) async {
     await initialize();
     final soundName = _soundResourceFor('dhuhr', adhanType);
+    final channelId = playSound
+        ? 'adhan_alarm_channel_${soundName}_v7'
+        : 'adhan_alarm_channel_silent_v7';
     final scheduleMode = await _resolveAndroidScheduleMode();
     final testTime = DateTime.now().add(Duration(seconds: secondsDelay));
 
     final adhanAndroid = AndroidNotificationDetails(
-      'adhan_alarm_channel_${soundName}_v7',
+      channelId,
       'Adhan Notification Test',
       channelDescription: 'Test channel for Adhan notification sound',
       importance: Importance.max,
       priority: Priority.max,
-      sound: RawResourceAndroidNotificationSound(soundName),
-      playSound: true,
+      sound: playSound ? RawResourceAndroidNotificationSound(soundName) : null,
+      playSound: playSound,
       autoCancel: false,
       ongoing: true,
       category: AndroidNotificationCategory.alarm,
-      audioAttributesUsage: AudioAttributesUsage.alarm,
-      enableVibration: true,
+      audioAttributesUsage:
+          playSound ? AudioAttributesUsage.alarm : AudioAttributesUsage.notification,
+      enableVibration: playSound,
       fullScreenIntent: true,
       actions: [
         AndroidNotificationAction(
@@ -667,8 +694,8 @@ class PrayerNotificationService {
     );
 
     final adhanIos = DarwinNotificationDetails(
-      sound: 'adhan_short.mp3',
-      presentSound: true,
+      sound: playSound ? 'adhan_short.mp3' : null,
+      presentSound: playSound,
       presentAlert: true,
       presentBadge: true,
     );
@@ -713,6 +740,7 @@ class PrayerNotificationService {
     required DateTime now,
     required int reminderMinutes,
     required AndroidScheduleMode scheduleMode,
+    required bool playSound,
   }) async {
     final reminderTime = prayerTime.subtract(Duration(minutes: reminderMinutes));
     if (!reminderTime.isAfter(now)) return;
@@ -726,7 +754,7 @@ class PrayerNotificationService {
       channelDescription: l10n.prayerReminderChannelDescription,
       importance: Importance.high,
       priority: Priority.high,
-      playSound: true,
+      playSound: playSound,
       actions: hasAdhan
           ? [
               AndroidNotificationAction(
@@ -739,7 +767,7 @@ class PrayerNotificationService {
     );
 
     final iosDetails = DarwinNotificationDetails(
-      presentSound: true,
+      presentSound: playSound,
       categoryIdentifier: hasAdhan ? _categoryReminder : null,
     );
 
@@ -768,6 +796,7 @@ class PrayerNotificationService {
     required DateTime now,
     required AdhanType adhanType,
     required AndroidScheduleMode scheduleMode,
+    required bool playSound,
   }) async {
     AppLogger.debug('_scheduleAdhan: $prayerKey ($title) at $prayerTime');
     if (!prayerTime.isAfter(now)) {
@@ -786,20 +815,27 @@ class PrayerNotificationService {
     // channels are immutable once created — reusing one fixed channel id
     // for every Adhan sound would mean the sound could never actually
     // change after the first schedule. Keying by sound name sidesteps
-    // that by giving each variant its own channel.
+    // that by giving each variant its own channel. When the user disables
+    // adhan sound, a dedicated silent channel is used instead so the
+    // notification still appears without any audio.
+    final channelId = playSound
+        ? 'adhan_alarm_channel_${soundName}_v7'
+        : 'adhan_alarm_channel_silent_v7';
+
     final adhanAndroid = AndroidNotificationDetails(
-      'adhan_alarm_channel_${soundName}_v7',
+      channelId,
       l10n.prayerAdhanChannelName,
       channelDescription: l10n.prayerAdhanChannelDescription,
       importance: Importance.max,
       priority: Priority.max,
-      sound: RawResourceAndroidNotificationSound(soundName),
-      playSound: true,
+      sound: playSound ? RawResourceAndroidNotificationSound(soundName) : null,
+      playSound: playSound,
       autoCancel: false,
       ongoing: true,
       category: AndroidNotificationCategory.alarm,
-      audioAttributesUsage: AudioAttributesUsage.alarm,
-      enableVibration: true,
+      audioAttributesUsage:
+          playSound ? AudioAttributesUsage.alarm : AudioAttributesUsage.notification,
+      enableVibration: playSound,
       fullScreenIntent: true,
       actions: [
         AndroidNotificationAction(
@@ -811,8 +847,8 @@ class PrayerNotificationService {
     );
 
     final adhanIos = DarwinNotificationDetails(
-      sound: '$iosSoundName.mp3',
-      presentSound: true,
+      sound: playSound ? '$iosSoundName.mp3' : null,
+      presentSound: playSound,
       presentAlert: true,
       presentBadge: true,
       categoryIdentifier: _categoryAdhanPlaying,

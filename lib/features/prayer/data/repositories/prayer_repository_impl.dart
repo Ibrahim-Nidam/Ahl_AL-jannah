@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -37,6 +39,8 @@ class PrayerRepositoryImpl implements PrayerRepository {
   }
 
   static const String _keyNotificationsEnabled = 'prayer_notifications_enabled';
+  static const String _keyAdhanSoundEnabled = 'prayer_adhan_sound_enabled';
+  static const String _keySilentPrayers = 'prayer_silent_prayers';
   static const String _keyReminderInterval = 'prayer_reminder_interval_minutes';
   static const String _keyMutedPrayers = 'prayer_muted_list';
   static const String _keyUseAutomaticMethod = 'prayer_use_automatic_method';
@@ -48,6 +52,8 @@ class PrayerRepositoryImpl implements PrayerRepository {
     final prefs = await SharedPreferences.getInstance();
 
     final enabled = prefs.getBool(_keyNotificationsEnabled) ?? true;
+    final soundEnabled = prefs.getBool(_keyAdhanSoundEnabled) ?? true;
+    final silentPrayers = prefs.getStringList(_keySilentPrayers) ?? [];
     final interval = prefs.getInt(_keyReminderInterval) ?? 5;
     final mutedList = prefs.getStringList(_keyMutedPrayers) ?? [];
     final useAutomatic = prefs.getBool(_keyUseAutomaticMethod) ?? true;
@@ -56,6 +62,8 @@ class PrayerRepositoryImpl implements PrayerRepository {
 
     return PrayerTimesSettings(
       notificationsEnabled: enabled,
+      adhanSoundEnabled: soundEnabled,
+      silentPrayers: silentPrayers,
       reminderInterval: interval,
       mutedPrayers: mutedList,
       useAutomaticMethod: useAutomatic,
@@ -68,6 +76,8 @@ class PrayerRepositoryImpl implements PrayerRepository {
   Future<void> saveSettings(PrayerTimesSettings settings) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyNotificationsEnabled, settings.notificationsEnabled);
+    await prefs.setBool(_keyAdhanSoundEnabled, settings.adhanSoundEnabled);
+    await prefs.setStringList(_keySilentPrayers, settings.silentPrayers);
     await prefs.setInt(_keyReminderInterval, settings.reminderInterval);
     await prefs.setStringList(_keyMutedPrayers, settings.mutedPrayers);
     await prefs.setBool(_keyUseAutomaticMethod, settings.useAutomaticMethod);
@@ -94,16 +104,55 @@ class PrayerRepositoryImpl implements PrayerRepository {
   }
 
   static const String _keyMonthlyPrayerTimes = 'prayer_monthly_times';
+  static const String _keyMonthlyPrayerTimesPrefix = 'prayer_monthly_times_';
 
   @override
-  Future<String?> getCachedMonthlyPrayerTimes() async {
+  Future<String?> getCachedMonthlyPrayerTimes(int year, int month) async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyMonthlyPrayerTimes);
+    final key = '$_keyMonthlyPrayerTimesPrefix$year-$month';
+
+    var json = prefs.getString(key);
+    if (json != null) return json;
+
+    // Migration from the pre-v2 single-blob cache. The blob stores exactly
+    // one month; if it matches the requested month it is promoted to the
+    // per-month key and the legacy key is removed.
+    final legacy = prefs.getString(_keyMonthlyPrayerTimes);
+    if (legacy != null) {
+      try {
+        final decoded = jsonDecode(legacy);
+        if (decoded is Map<String, dynamic> &&
+            decoded['year'] == year &&
+            decoded['month'] == month) {
+          await prefs.setString(key, legacy);
+          await prefs.remove(_keyMonthlyPrayerTimes);
+          return legacy;
+        }
+      } catch (_) {}
+    }
+    return null;
   }
 
   @override
-  Future<void> cacheMonthlyPrayerTimes(String json) async {
+  Future<void> cacheMonthlyPrayerTimes(int year, int month, String json) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyMonthlyPrayerTimes, json);
+    await prefs.setString('$_keyMonthlyPrayerTimesPrefix$year-$month', json);
+
+    // Keep only the current and next month on disk. Anything older (or
+    // browsed beyond next month) is pruned so storage stays bounded.
+    final now = DateTime.now();
+    final nextMonthDate = DateTime(now.year, now.month + 1, 1);
+    final allowedMonths = {
+      '${now.year}-${now.month}',
+      '${nextMonthDate.year}-${nextMonthDate.month}',
+    };
+
+    for (final key in prefs.getKeys()) {
+      if (!key.startsWith(_keyMonthlyPrayerTimesPrefix)) continue;
+      final monthKey = key.substring(_keyMonthlyPrayerTimesPrefix.length);
+      if (!allowedMonths.contains(monthKey)) {
+        await prefs.remove(key);
+      }
+    }
   }
 }

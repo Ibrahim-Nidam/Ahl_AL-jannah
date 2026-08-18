@@ -12,13 +12,15 @@ class MockPrayerRepository implements PrayerRepository {
   UserLocation? _location;
   PrayerTimesSettings _settings = const PrayerTimesSettings(
     notificationsEnabled: true,
+    adhanSoundEnabled: true,
+    silentPrayers: [],
     reminderInterval: 5,
     mutedPrayers: [],
     useAutomaticMethod: true,
     madhab: 0,
   );
   bool _isManual = false;
-  String? _monthlyJson;
+  final Map<String, String> _monthlyCache = {};
 
   @override
   Future<UserLocation?> getCachedLocation() async => _location;
@@ -39,10 +41,13 @@ class MockPrayerRepository implements PrayerRepository {
   Future<void> setManualLocation(bool isManual) async => _isManual = isManual;
 
   @override
-  Future<String?> getCachedMonthlyPrayerTimes() async => _monthlyJson;
+  Future<String?> getCachedMonthlyPrayerTimes(int year, int month) async =>
+      _monthlyCache['$year-$month'];
 
   @override
-  Future<void> cacheMonthlyPrayerTimes(String json) async => _monthlyJson = json;
+  Future<void> cacheMonthlyPrayerTimes(int year, int month, String json) async {
+    _monthlyCache['$year-$month'] = json;
+  }
 }
 
 void main() {
@@ -81,6 +86,8 @@ void main() {
         'latitude': 33.5731,
         'longitude': -7.5898,
         'timezone': 'Africa/Casablanca',
+        'methodId': 21,
+        'school': 0,
         'data': [
           {
             'timings': {
@@ -99,10 +106,16 @@ void main() {
         ]
       };
 
-      await repo.cacheMonthlyPrayerTimes(jsonEncode(mockCalendarWrapper));
+      await repo.cacheMonthlyPrayerTimes(
+        2026,
+        7,
+        jsonEncode(mockCalendarWrapper),
+      );
 
       final settings = const PrayerTimesSettings(
         notificationsEnabled: true,
+        adhanSoundEnabled: true,
+        silentPrayers: [],
         reminderInterval: 5,
         mutedPrayers: [],
         useAutomaticMethod: true,
@@ -155,6 +168,8 @@ void main() {
     test('saves settings changes to shared preferences', () async {
       final newSettings = const PrayerTimesSettings(
         notificationsEnabled: false,
+        adhanSoundEnabled: false,
+        silentPrayers: ['isha'],
         reminderInterval: 5,
         mutedPrayers: ['dhuhr', 'asr'],
         useAutomaticMethod: true,
@@ -165,9 +180,11 @@ void main() {
 
       final loaded = await repository.getSettings();
       expect(loaded.notificationsEnabled, false);
+      expect(loaded.adhanSoundEnabled, false);
       expect(loaded.reminderInterval, 5);
       expect(loaded.mutedPrayers, contains('dhuhr'));
       expect(loaded.mutedPrayers, contains('asr'));
+      expect(loaded.silentPrayers, contains('isha'));
     });
   });
 }

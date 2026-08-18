@@ -82,6 +82,34 @@ void prayerCallbackDispatcher() {
         nextDayTimes: nextDayTimes,
       );
 
+      // Schedule a best-effort rollover task a few minutes after tomorrow's
+      // Fajr, so the schedule deterministically advances to the next day
+      // even if the OS delays the daily periodic task. This is purely a
+      // safety net — the exact-alarm notifications themselves already cover
+      // today + tomorrow and survive app kill / reboot.
+      try {
+        final now = DateTime.now();
+        var rolloverDelay = nextDayTimes.fajr.difference(now) + const Duration(minutes: 3);
+        if (rolloverDelay < const Duration(minutes: 2)) {
+          rolloverDelay = const Duration(minutes: 2);
+        }
+        await Workmanager().registerOneOffTask(
+          "daily_rollover",
+          "dailyAdhanRescheduleTask",
+          initialDelay: rolloverDelay,
+          existingWorkPolicy: ExistingWorkPolicy.replace,
+          constraints: Constraints(
+            requiresBatteryNotLow: false,
+            requiresCharging: false,
+            requiresDeviceIdle: false,
+            requiresStorageNotLow: false,
+          ),
+        );
+        AppLogger.info('Daily rollover task scheduled in $rolloverDelay');
+      } catch (e, st) {
+        AppLogger.error('Failed to register daily rollover task', error: e, stackTrace: st);
+      }
+
       AppLogger.info("Workmanager background task completed successfully.");
       return true;
     } catch (e, stackTrace) {
@@ -106,14 +134,23 @@ class PrayerBackgroundExecutor {
     }
   }
 
-  /// Schedules the background adhan scheduler task to run every 15 minutes.
+  /// Registers the daily safety-net task that re-establishes the prayer
+  /// notifications.
+  ///
+  /// Intentionally DAILY (not every 15 minutes). Exact-alarm notifications
+  /// are scheduled ~24h ahead, persist across app kill and reboot (via the
+  /// boot receiver), and are re-scheduled on every app open — so a daily
+  /// periodic re-check is all that is needed to recover from any lost
+  /// alarms. Scheduling every 15 minutes instead cancels and re-creates
+  /// every exact alarm constantly, which triggers Android's exact-alarm
+  /// throttling and is a primary cause of alerts firing LATE.
   static Future<void> scheduleDailyAdhanTask() async {
     AppLogger.info('PrayerBackgroundExecutor.scheduleDailyAdhanTask called');
     try {
       await Workmanager().registerPeriodicTask(
         "daily_adhan_rescheduler",
         "dailyAdhanRescheduleTask",
-        frequency: const Duration(minutes: 15),
+        frequency: const Duration(hours: 24),
         initialDelay: const Duration(minutes: 1),
         existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
         constraints: Constraints(
@@ -123,7 +160,7 @@ class PrayerBackgroundExecutor {
           requiresStorageNotLow: false,
         ),
       );
-      AppLogger.info('Background prayer task registered successfully (every 15 minutes)');
+      AppLogger.info('Background prayer safety-net task registered (daily)');
     } catch (e, stackTrace) {
       AppLogger.error('Failed to register periodic task', error: e, stackTrace: stackTrace);
     }

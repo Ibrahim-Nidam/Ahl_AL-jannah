@@ -19,6 +19,11 @@ class PrayerLoadSuccess extends PrayerState {
   final String hijriDateStrAr;
   final DateTime selectedDate;
 
+  /// Tomorrow's Fajr time, captured during the last successful load. Used
+  /// once all of today's prayers have passed (i.e. between Isha and Fajr)
+  /// so the countdown does not need a fresh calendar call every second.
+  final DateTime? nextDayFajr;
+
   const PrayerLoadSuccess({
     required this.location,
     required this.settings,
@@ -29,6 +34,7 @@ class PrayerLoadSuccess extends PrayerState {
     required this.hijriDateStr,
     required this.hijriDateStrAr,
     required this.selectedDate,
+    this.nextDayFajr,
   });
 
   PrayerLoadSuccess copyWith({
@@ -41,6 +47,7 @@ class PrayerLoadSuccess extends PrayerState {
     String? hijriDateStr,
     String? hijriDateStrAr,
     DateTime? selectedDate,
+    DateTime? nextDayFajr,
   }) {
     return PrayerLoadSuccess(
       location: location ?? this.location,
@@ -52,6 +59,7 @@ class PrayerLoadSuccess extends PrayerState {
       hijriDateStr: hijriDateStr ?? this.hijriDateStr,
       hijriDateStrAr: hijriDateStrAr ?? this.hijriDateStrAr,
       selectedDate: selectedDate ?? this.selectedDate,
+      nextDayFajr: nextDayFajr ?? this.nextDayFajr,
     );
   }
 }

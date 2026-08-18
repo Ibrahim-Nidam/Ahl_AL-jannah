@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
@@ -50,10 +51,38 @@ class PrayerCubit extends Cubit<PrayerState> {
       final hijriStr = todayTimes.hijriDateStr ?? '';
       final hijriStrAr = todayTimes.hijriDateStrAr ?? '';
 
+      // Resolve the times used for notification scheduling. These are
+      // always for the real calendar "today", even when the UI is browsing
+      // another day. Tomorrow's times may be unavailable while offline if
+      // the next month was never cached — that must not fail today's page,
+      // so it is computed leniently.
+      final now = DateTime.now();
+      final isTodayView = targetDate.year == now.year &&
+          targetDate.month == now.month &&
+          targetDate.day == now.day;
+
+      final notificationTimes = isTodayView
+          ? todayTimes
+          : await _calculatePrayerTimesUseCase(
+              location: location,
+              date: now,
+              settings: settings,
+            );
+
+      PrayerTimeEntity? nextDayTimes;
+      try {
+        nextDayTimes = await _calculatePrayerTimesUseCase(
+          location: location,
+          date: DateTime(now.year, now.month, now.day).add(const Duration(days: 1)),
+          settings: settings,
+        );
+      } catch (e) {
+        debugPrint('[Prayer] Failed to compute next-day times: $e');
+      }
+
       final (nextName, nextTime) = _findNextPrayer(
-        location,
-        settings,
         todayTimes,
+        nextDayFajr: nextDayTimes?.fajr,
       );
       final remaining = nextTime.difference(DateTime.now());
 
@@ -68,28 +97,8 @@ class PrayerCubit extends Cubit<PrayerState> {
           hijriDateStr: hijriStr,
           hijriDateStrAr: hijriStrAr,
           selectedDate: targetDate,
+          nextDayFajr: nextDayTimes?.fajr,
         ),
-      );
-
-      // Schedule notifications for the real calendar "today", even when
-      // the UI is browsing another day.
-      final now = DateTime.now();
-      final isTodayView = targetDate.year == now.year &&
-          targetDate.month == now.month &&
-          targetDate.day == now.day;
-
-      final notificationTimes = isTodayView
-          ? todayTimes
-          : await _calculatePrayerTimesUseCase(
-              location: location,
-              date: now,
-              settings: settings,
-            );
-
-      final nextDayTimes = await _calculatePrayerTimesUseCase(
-        location: location,
-        date: DateTime(now.year, now.month, now.day).add(const Duration(days: 1)),
-        settings: settings,
       );
 
       final appSettings = await _getAppSettingsUseCase();
@@ -146,6 +155,33 @@ class PrayerCubit extends Cubit<PrayerState> {
     }
   }
 
+  /// Toggles the adhan/reminder sound on/off and saves settings.
+  Future<void> toggleAdhanSound(bool enabled) async {
+    final currentState = state;
+    if (currentState is PrayerLoadSuccess) {
+      final newSettings = currentState.settings.copyWith(
+        adhanSoundEnabled: enabled,
+      );
+      await updateSettings(newSettings);
+    }
+  }
+
+  /// Saves prayer alert settings from anywhere in the app (e.g. the Settings
+  /// page) and immediately applies/reschedules. Unlike [toggleNotifications],
+  /// this works even when the Prayer page has not been loaded yet.
+  Future<void> applyPrayerSettings(PrayerTimesSettings newSettings) async {
+    if (state is PrayerLoadSuccess) {
+      await updateSettings(newSettings);
+      return;
+    }
+    try {
+      await _savePrayerSettingsUseCase(newSettings);
+      await loadPrayerTimes();
+    } catch (e) {
+      emit(PrayerLoadFailure(e.toString()));
+    }
+  }
+
   /// Sets the reminder interval (5–15 minutes) and saves settings.
   Future<void> setReminderInterval(int minutes) async {
     final currentState = state;
@@ -187,6 +223,26 @@ class PrayerCubit extends Cubit<PrayerState> {
     }
   }
 
+  /// Toggles whether a specific prayer (e.g. 'fajr', 'isha') plays adhan
+  /// sound, independent of mute (which removes the notification entirely).
+  Future<void> togglePrayerSound(String prayerName) async {
+    final currentState = state;
+    if (currentState is PrayerLoadSuccess) {
+      final silentList = List<String>.from(currentState.settings.silentPrayers);
+      if (silentList.contains(prayerName)) {
+        silentList.remove(prayerName);
+      } else {
+        silentList.add(prayerName);
+      }
+
+      final newSettings = currentState.settings.copyWith(
+        silentPrayers: silentList,
+      );
+
+      await updateSettings(newSettings);
+    }
+  }
+
   /// Updates settings, recalculates timings, and reschedules notifications.
   Future<void> updateSettings(PrayerTimesSettings newSettings) async {
     final currentState = state;
@@ -201,27 +257,6 @@ class PrayerCubit extends Cubit<PrayerState> {
           settings: newSettings,
         );
 
-        final (nextName, nextTime) = _findNextPrayer(
-          currentState.location,
-          newSettings,
-          todayTimes,
-        );
-        final remaining = nextTime.difference(DateTime.now());
-
-        emit(
-          currentState.copyWith(
-            settings: newSettings,
-            todayTimes: todayTimes,
-            nextPrayerName: nextName,
-            nextPrayerTime: nextTime,
-            timeRemaining: remaining,
-            hijriDateStr: todayTimes.hijriDateStr,
-            hijriDateStrAr: todayTimes.hijriDateStrAr,
-          ),
-        );
-
-        final appSettings = await _getAppSettingsUseCase();
-
         // Always schedule against calendar "today", not the browsed date.
         final now = DateTime.now();
         final isTodayView = currentState.selectedDate.year == now.year &&
@@ -234,14 +269,40 @@ class PrayerCubit extends Cubit<PrayerState> {
                 date: now,
                 settings: newSettings,
               );
-        final nextDayTimes = await _calculatePrayerTimesUseCase(
-          location: currentState.location,
-          date: DateTime(now.year, now.month, now.day)
-              .add(const Duration(days: 1)),
-          settings: newSettings,
+
+        PrayerTimeEntity? nextDayTimes;
+        try {
+          nextDayTimes = await _calculatePrayerTimesUseCase(
+            location: currentState.location,
+            date: DateTime(now.year, now.month, now.day)
+                .add(const Duration(days: 1)),
+            settings: newSettings,
+          );
+        } catch (e) {
+          debugPrint('[Prayer] Failed to compute next-day times after setting change: $e');
+        }
+
+        final (nextName, nextTime) = _findNextPrayer(
+          todayTimes,
+          nextDayFajr: nextDayTimes?.fajr,
+        );
+        final remaining = nextTime.difference(DateTime.now());
+
+        emit(
+          currentState.copyWith(
+            settings: newSettings,
+            todayTimes: todayTimes,
+            nextPrayerName: nextName,
+            nextPrayerTime: nextTime,
+            timeRemaining: remaining,
+            hijriDateStr: todayTimes.hijriDateStr,
+            hijriDateStrAr: todayTimes.hijriDateStrAr,
+            nextDayFajr: nextDayTimes?.fajr,
+          ),
         );
 
         if (newSettings.notificationsEnabled) {
+          final appSettings = await _getAppSettingsUseCase();
           await _notificationService.schedulePrayerNotifications(
             notificationTimes,
             newSettings,
@@ -256,6 +317,7 @@ class PrayerCubit extends Cubit<PrayerState> {
         // Adhkar reminders are independent of the prayer-notifications
         // toggle — they always get (re)scheduled per their own settings,
         // whether or not prayer notifications are enabled.
+        final appSettings = await _getAppSettingsUseCase();
         await _notificationService.scheduleAdhkarReminders(
           notificationTimes,
           morningEnabled: appSettings.morningAdhkarReminderEnabled,
@@ -291,9 +353,8 @@ class PrayerCubit extends Cubit<PrayerState> {
           // Current prayer time passed! Transition UI to next prayer without calling
           // loadPrayerTimes() which would cancel pending system notifications.
           final (nextName, nextTime) = _findNextPrayer(
-            currentState.location,
-            currentState.settings,
             currentState.todayTimes,
+            nextDayFajr: currentState.nextDayFajr,
           );
           final newRemaining = nextTime.difference(now);
           emit(
@@ -318,11 +379,16 @@ class PrayerCubit extends Cubit<PrayerState> {
   }
 
   /// Helper to calculate the next prayer name and timestamp.
+  ///
+  /// Once all of today's prayers have passed, the next prayer is tomorrow's
+  /// Fajr. [nextDayFajr] is captured during the last successful load to
+  /// avoid a per-second calendar lookup; when it is unavailable (offline and
+  /// the next month was never cached) the countdown falls back to a
+  /// day-ahead placeholder that the next successful load will correct.
   (String, DateTime) _findNextPrayer(
-    UserLocation location,
-    PrayerTimesSettings settings,
-    PrayerTimeEntity today,
-  ) {
+    PrayerTimeEntity today, {
+    required DateTime? nextDayFajr,
+  }) {
     final now = DateTime.now();
 
     if (now.isBefore(today.fajr)) return ('Fajr', today.fajr);
@@ -332,15 +398,13 @@ class PrayerCubit extends Cubit<PrayerState> {
     if (now.isBefore(today.maghrib)) return ('Maghrib', today.maghrib);
     if (now.isBefore(today.isha)) return ('Isha', today.isha);
 
-    // If all today's prayers are past, the next prayer is tomorrow's Fajr.
-    final tomorrow = now.add(const Duration(days: 1));
-    final tomorrowTimes = _calculatePrayerTimesUseCase.calculateLocal(
-      location: location,
-      date: tomorrow,
-      settings: settings,
-    );
+    // All today's prayers are past → the next prayer is tomorrow's Fajr.
+    if (nextDayFajr != null) return ('Fajr', nextDayFajr);
 
-    return ('Fajr', tomorrowTimes.fajr);
+    // No accurate tomorrow data available; keep the countdown alive with a
+    // day-ahead placeholder until the next successful load corrects it.
+    final placeholder = today.isha.add(const Duration(days: 1));
+    return ('Fajr', placeholder);
   }
 
   @override

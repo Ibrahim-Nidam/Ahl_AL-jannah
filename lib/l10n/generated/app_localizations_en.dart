@@ -513,6 +513,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prayerUnmuteAdhan => 'Unmute adhan';
 
   @override
+  String get prayerMuteAdhanSound => 'Mute this adhan\'s sound';
+
+  @override
+  String get prayerUnmuteAdhanSound => 'Enable adhan sound for this prayer';
+
+  @override
   String get prayerPreviousDay => 'Previous day';
 
   @override
@@ -553,6 +559,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prayerAdhanChannelDescription => 'Adhan plays at prayer time';
+
+  @override
+  String get prayerAdhanSoundToggle => 'Adhan Sound';
+
+  @override
+  String get prayerAdhanSoundToggleSubtitle =>
+      'Play the adhan at prayer time. Turn off to receive silent alerts only.';
+
+  @override
+  String get prayerAlertsSectionTitle => 'Prayer Alerts';
+
+  @override
+  String get prayerAlertsSectionDescription =>
+      'Notification and sound are separate choices.';
+
+  @override
+  String get prayerExactAlarmTileTitle => 'Exact alarm access';
+
+  @override
+  String get prayerExactAlarmEnabled => 'Allowed — alerts fire on time';
+
+  @override
+  String get prayerExactAlarmDisabled =>
+      'Disabled — alerts may be delayed. Tap to enable.';
 
   @override
   String get prayerAdhanPlayingChannelName => 'Adhan Playing';

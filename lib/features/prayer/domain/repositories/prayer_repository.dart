@@ -20,9 +20,12 @@ abstract interface class PrayerRepository {
   /// Sets whether the location is manual.
   Future<void> setManualLocation(bool isManual);
 
-  /// Retrieves cached monthly prayer times in JSON string format.
-  Future<String?> getCachedMonthlyPrayerTimes();
+  /// Retrieves cached prayer times for a specific month (1-indexed) in JSON
+  /// string format, or `null` if that month has not been cached.
+  Future<String?> getCachedMonthlyPrayerTimes(int year, int month);
 
-  /// Caches monthly prayer times JSON string.
-  Future<void> cacheMonthlyPrayerTimes(String json);
+  /// Caches prayer times for a specific month (1-indexed) as a JSON string.
+  /// Only the current and next month are retained on disk; any older cached
+  /// months are pruned to keep storage bounded.
+  Future<void> cacheMonthlyPrayerTimes(int year, int month, String json);
 }

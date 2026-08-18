@@ -994,6 +994,18 @@ abstract class AppLocalizations {
   /// **'Unmute adhan'**
   String get prayerUnmuteAdhan;
 
+  /// No description provided for @prayerMuteAdhanSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute this adhan\'s sound'**
+  String get prayerMuteAdhanSound;
+
+  /// No description provided for @prayerUnmuteAdhanSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable adhan sound for this prayer'**
+  String get prayerUnmuteAdhanSound;
+
   /// No description provided for @prayerPreviousDay.
   ///
   /// In en, this message translates to:
@@ -1077,6 +1089,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Adhan plays at prayer time'**
   String get prayerAdhanChannelDescription;
+
+  /// No description provided for @prayerAdhanSoundToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Adhan Sound'**
+  String get prayerAdhanSoundToggle;
+
+  /// No description provided for @prayerAdhanSoundToggleSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Play the adhan at prayer time. Turn off to receive silent alerts only.'**
+  String get prayerAdhanSoundToggleSubtitle;
+
+  /// No description provided for @prayerAlertsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Prayer Alerts'**
+  String get prayerAlertsSectionTitle;
+
+  /// No description provided for @prayerAlertsSectionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification and sound are separate choices.'**
+  String get prayerAlertsSectionDescription;
+
+  /// No description provided for @prayerExactAlarmTileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Exact alarm access'**
+  String get prayerExactAlarmTileTitle;
+
+  /// No description provided for @prayerExactAlarmEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Allowed — alerts fire on time'**
+  String get prayerExactAlarmEnabled;
+
+  /// No description provided for @prayerExactAlarmDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled — alerts may be delayed. Tap to enable.'**
+  String get prayerExactAlarmDisabled;
 
   /// No description provided for @prayerAdhanPlayingChannelName.
   ///

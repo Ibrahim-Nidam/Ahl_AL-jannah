@@ -515,6 +515,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get prayerUnmuteAdhan => 'Réactiver l\'adhan';
 
   @override
+  String get prayerMuteAdhanSound => 'Couper le son de cet adhan';
+
+  @override
+  String get prayerUnmuteAdhanSound => 'Réactiver le son de cet adhan';
+
+  @override
   String get prayerPreviousDay => 'Jour précédent';
 
   @override
@@ -557,6 +563,31 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get prayerAdhanChannelDescription =>
       'L\'adhan est diffusé à l\'heure de la prière';
+
+  @override
+  String get prayerAdhanSoundToggle => 'Son de l\'adhan';
+
+  @override
+  String get prayerAdhanSoundToggleSubtitle =>
+      'Diffuser l\'adhan à l\'heure de la prière. Désactivez pour ne recevoir que des alertes silencieuses.';
+
+  @override
+  String get prayerAlertsSectionTitle => 'Alertes de prière';
+
+  @override
+  String get prayerAlertsSectionDescription =>
+      'Notification et son sont des choix distincts.';
+
+  @override
+  String get prayerExactAlarmTileTitle => 'Accès à l\'alarme exacte';
+
+  @override
+  String get prayerExactAlarmEnabled =>
+      'Autorisé — les alertes arrivent à l\'heure';
+
+  @override
+  String get prayerExactAlarmDisabled =>
+      'Désactivé — les alertes peuvent être retardées. Touchez pour activer';
 
   @override
   String get prayerAdhanPlayingChannelName => 'Adhan en cours';
