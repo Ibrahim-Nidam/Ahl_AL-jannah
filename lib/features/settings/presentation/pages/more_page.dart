@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import 'package:ahl_jannah/core/theme/app_colors.dart';
 import 'package:ahl_jannah/core/theme/app_text_styles.dart';
@@ -22,6 +23,26 @@ class _MorePageState extends State<MorePage>
     with AutomaticKeepAliveClientMixin<MorePage> {
   @override
   bool get wantKeepAlive => true;
+
+  /// Version read from the packaged app (pubspec `version: x.y.z+build`),
+  /// shown in the About dialog so it can never drift from the release.
+  String _appVersion = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (!mounted) return;
+      setState(() => _appVersion = info.version);
+    } catch (_) {
+      // Non-package context (e.g. unit tests) — leave the version blank.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +92,7 @@ class _MorePageState extends State<MorePage>
                     onTap: () => DebugAccess.registerTap(),
                     child: AboutDialog(
                       applicationName: 'Ahl Jannah',
-                      applicationVersion: '1.0.0',
+                      applicationVersion: _appVersion,
                       applicationLegalese: '© 2026 Ahl Jannah',
                     ),
                   );
