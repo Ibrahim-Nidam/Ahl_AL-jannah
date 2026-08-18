@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../../../core/config/feature_flags.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -597,9 +598,17 @@ class _QuranReaderPageState extends State<QuranReaderPage>
 
   bool get _isWarsh => _activeRiwaya() == QuranRiwaya.warsh;
 
+  /// Whether the tajweed feature is enabled at all for the active riwaya
+  /// (compile-time [FeatureFlags] switch). When false, tajweed is fully
+  /// hidden: no colouring and no settings toggle.
+  bool get _tajweedEnabledForActiveRiwaya =>
+      _isWarsh ? FeatureFlags.tajweedWarshEnabled : FeatureFlags.tajweedHafsEnabled;
+
   /// Tajweed coloring applies to both riwayat; the analyzer detects the
-  /// Warsh orthography (ے / ٗ / ٞ / ٖ / اَ۬) directly from the text.
-  bool get _effectiveShowTajweed => _showTajweed;
+  /// Warsh orthography (ے / ٗ / ٞ / ٖ / اَ۬) directly from the text. The
+  /// feature switch above gates it.
+  bool get _effectiveShowTajweed =>
+      _showTajweed && _tajweedEnabledForActiveRiwaya;
 
   Future<List<AyahEntity>> _getAyahsByPage(int page) =>
       _isWarsh ? _cubit.getWarshAyahsByPage(page) : _cubit.getAyahsByPage(page);
@@ -840,30 +849,31 @@ class _QuranReaderPageState extends State<QuranReaderPage>
                     ),
                   ],
                   const SizedBox(height: 8),
-                  SwitchListTile(
-                    title: Text(
-                      l10n.quranShowTajweed,
-                      style: AppTextStyles.bodyLarge.copyWith(
-                        color: context.isDarkMode
-                            ? AppColors.onSurfaceDark
-                            : AppColors.onSurfaceLight,
+                  if (_tajweedEnabledForActiveRiwaya)
+                    SwitchListTile(
+                      title: Text(
+                        l10n.quranShowTajweed,
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          color: context.isDarkMode
+                              ? AppColors.onSurfaceDark
+                              : AppColors.onSurfaceLight,
+                        ),
                       ),
-                    ),
-                    subtitle: Text(
-                      l10n.quranShowTajweedSubtitle,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: context.isDarkMode
-                            ? AppColors.onSurfaceDarkVariant
-                            : AppColors.onSurfaceLightVariant,
+                      subtitle: Text(
+                        l10n.quranShowTajweedSubtitle,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: context.isDarkMode
+                              ? AppColors.onSurfaceDarkVariant
+                              : AppColors.onSurfaceLightVariant,
+                        ),
                       ),
+                      value: _showTajweed,
+                      activeThumbColor: AppColors.primaryGreen,
+                      onChanged: (val) {
+                        setModalState(() {});
+                        _saveShowTajweed(val);
+                      },
                     ),
-                    value: _showTajweed,
-                    activeThumbColor: AppColors.primaryGreen,
-                    onChanged: (val) {
-                      setModalState(() {});
-                      _saveShowTajweed(val);
-                    },
-                  ),
                   const SizedBox(height: 16),
                 ],
               ),
