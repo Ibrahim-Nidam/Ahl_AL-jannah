@@ -27,6 +27,13 @@
 /// which carry no color in the conventional colored mushaf. The algorithm
 /// was validated against the app's bundled `assets/quran.db` text.
 ///
+/// The same rule set is detected from the Warsh (Maghribi) QPC mushaf text
+/// with no riwaya flag — the Warsh-only orthography is read straight off
+/// the glyphs: the alif maqsura is written ے (U+06D2), the tanween as
+/// ٗ / ٞ / ٖ (U+0657 / U+065E / U+0656), and the elided hamzat al-wasl as
+/// اَ۬ (a vowel + U+06EC over a plain alef). Those code points never occur
+/// in the Hafs bundle, so supporting them changes no Hafs behaviour.
+///
 /// Performance: results are memoized in a bounded LRU cache (results are
 /// pure — a function of the input text only), and the hot loop operates on
 /// integer code units to avoid per-character String allocations. This keeps
@@ -83,7 +90,35 @@ abstract final class QuranTajweedAnalyzer {
   static const int _alifMaqsura = 0x0649;
   static const int _yaa = 0x064A;
 
-  static const Set<int> _tanween = {_tanweenFath, _tanweenDam, _tanweenKasr};
+  // ── Warsh (Maghribi) orthography ──
+  //   ے (U+06D2) — the alif maqsura / final ي in the Maghribi yeh-barree
+  //     shape.
+  //   ٗ (U+0657) — tanween fath written as an inverted damma.
+  //   ٞ (U+065E) — tanween damm written as a fatha with two dots.
+  //   ٖ (U+0656) — tanween kasr written as a subscript alif.
+  //   ۬ (U+06EC) / ۪ (U+06EA) — the two small marks that write the
+  //     hamzat al-wasl on a word-initial alef (اَ۬ / اِ۬ / اَ۪ / اِ۪);
+  //     such a letter is elided in connected recitation. On non-alef
+  //     letters ۪ is the waqf mark and carries no tajweed rule.
+  //   ٕ (U+0655) — the hamza of a yeh seat written below (خَاطِـِٕينَ).
+  //     It never directly follows a noon/tanween/meem-saakin and every
+  //     maddah before it belongs to the madd-lazim word النَّبِيِّينَ,
+  //     so it carries no tajweed rule of its own.
+  static const int _alifMaqsuraWarsh = 0x06D2;
+  static const int _waslaMark = 0x06EC;
+  static const int _waslaMarkWarsh = 0x06EA;
+  static const int _tanweenFathWarsh = 0x0657;
+  static const int _tanweenDamWarsh = 0x065E;
+  static const int _tanweenKasrWarsh = 0x0656;
+
+  static const Set<int> _tanween = {
+    _tanweenFath,
+    _tanweenDam,
+    _tanweenKasr,
+    _tanweenFathWarsh,
+    _tanweenDamWarsh,
+    _tanweenKasrWarsh,
+  };
   static const Set<int> _sukunMarks = {_sukun, _emptyCentreSukun};
   static const Set<int> _vowelMarks = {_fatha, _damma, _kasra};
 
@@ -91,7 +126,8 @@ abstract final class QuranTajweedAnalyzer {
   static const Set<int> _idghamGhunnah = {_yaa, _noon, _meem, _waw};
   // ل ر — idgham without ghunnah
   static const Set<int> _idghamBila = {0x0644, 0x0631};
-  // ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك — ikhfa
+  // ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك — ikhfa (the canonical 15 letters;
+  // note د is ikhfa, while ح is an IZHAR letter and must not be here).
   static const Set<int> _ikhfa = {
     0x062A, 0x062B, 0x062C, 0x062F, 0x0630, 0x0632, 0x0633,
     0x0634, 0x0635, 0x0636, 0x0637, 0x0638, 0x0641, 0x0642,
@@ -99,8 +135,14 @@ abstract final class QuranTajweedAnalyzer {
   };
   // ق ط ب ج د — qalqalah
   static const Set<int> _qalqalah = {0x0642, 0x0637, 0x0628, 0x062C, 0x062F};
-  // ا ى ي و — the madd letters
-  static const Set<int> _maddLetters = {_alif, _alifMaqsura, _yaa, _waw};
+  // ا ى ي و ے — the madd letters (ے is the Warsh alif maqsura).
+  static const Set<int> _maddLetters = {
+    _alif,
+    _alifMaqsura,
+    _yaa,
+    _waw,
+    _alifMaqsuraWarsh,
+  };
   // ء أ ؤ إ ئ — the hamza letters that trigger muttasil/munfasil madd.
   static const Set<int> _hamzaLetters = {0x0621, 0x0623, 0x0624, 0x0625, 0x0626};
 
@@ -109,7 +151,8 @@ abstract final class QuranTajweedAnalyzer {
   /// dagger alif, tatweel, and the small high signs).
   static const Set<int> _attachedMarks = {
     0x064B, 0x064C, 0x064D, 0x064E, 0x064F, 0x0650, 0x0651,
-    0x0652, 0x0653, 0x0654, 0x0655, 0x0670, 0x0640,
+    0x0652, 0x0653, 0x0654, 0x0655, 0x0656, 0x0657, 0x065E,
+    0x0670, 0x0640,
     0x06DF, 0x06E0, 0x06E1, 0x06E2, 0x06E3, 0x06E4, 0x06E5,
     0x06E6, 0x06E7, 0x06E8, 0x06EA, 0x06EB, 0x06EC, 0x06ED,
   };
@@ -183,27 +226,48 @@ abstract final class QuranTajweedAnalyzer {
       final marks = L.marks;
 
       // Madd tabee'i: a voweled letter followed by its matching madd
-      // letter (ا / ى after fatha, ي after kasra, و after damma).
+      // letter (ا / ى after fatha, ي after kasra, و after damma). The
+      // Warsh ے is a madd letter after kasra (final ي) or fatha
+      // (alif maqsura).
       final isMaddLetter = _maddLetters.contains(ch);
-      if (isMaddLetter && _isSilent(marks) && idx > 0) {
+      if (isMaddLetter &&
+          _isSilent(marks) &&
+          !_isWaslaAlef(ch, marks) &&
+          idx > 0) {
         final prev = letters[idx - 1];
         if (_hasVowel(prev.marks)) {
-          final vowel = _lastVowel(prev.marks);
-          final isMadd = (ch == _alif || ch == _alifMaqsura) &&
-                  vowel == _fatha ||
-              ch == _yaa && vowel == _kasra ||
-              ch == _waw && vowel == _damma;
-          if (isMadd) paint(L.index, L.end, QuranTajweedRule.madd);
+          // A madd letter belongs to the same word as its voweled letter.
+          // A silent alef that opens a new word (Warsh drops the hamza of
+          // أَمْوَال → اَمْوَال) is not a madd.
+          var sameWord = true;
+          for (var k = prev.end; k < L.index; k++) {
+            if (code[k] == 0x20 || code[k] == 0x00A0 || code[k] == 0x200C) {
+              sameWord = false;
+              break;
+            }
+          }
+          if (sameWord) {
+            final vowel = _lastVowel(prev.marks);
+            final isMadd = ch == _alif && vowel == _fatha ||
+                ch == _alifMaqsura && vowel == _fatha ||
+                ch == _alifMaqsuraWarsh &&
+                    (vowel == _fatha || vowel == _kasra) ||
+                ch == _yaa && vowel == _kasra ||
+                ch == _waw && vowel == _damma;
+            if (isMadd) paint(L.index, L.end, QuranTajweedRule.madd);
+          }
         }
       }
 
       // Qalqalah: ق ط ب ج د carrying sukun, or the last letter of the
       // ayah (qalqalah kubra, any vowel). Mushaddad letters are
-      // assimilation, not qalqalah.
+      // assimilation, not qalqalah. "Last letter of the ayah" means no
+      // further Arabic letter follows — trailing short-vowel marks, waqf
+      // signs (ۖ etc.) and other annotations are all treated as the end.
       var isAyahFinal = true;
       for (var k = L.end; k < n; k++) {
         final c = code[k];
-        if (c != 0x20 && c != 0x00A0 && c != 0x200C && c != 0x06E9) {
+        if (_isArabicLetter(c)) {
           isAyahFinal = false;
           break;
         }
@@ -248,18 +312,21 @@ abstract final class QuranTajweedAnalyzer {
       final hasMaddah = marks.contains(_maddah);
       final hasDagger = marks.contains(_daggerAlif);
       if (hasMaddah) {
-        // Next real letter, skipping silent support alifs (وٓا۟) and
-        // wasla alefs, and noting whether a word boundary was crossed.
+        // Next real letter, skipping silent support alifs (وٓا۟), wasla
+        // alefs (ٱ and the Warsh اَ۬), and noting whether a word boundary
+        // was crossed.
         var crossedSpace = false;
         var nextIdx = idx + 1;
         while (nextIdx < letters.length) {
           final nxt = letters[nextIdx];
-          if ((nxt.ch == _alif || nxt.ch == _alifMaqsura) &&
-              _isSilent(nxt.marks)) {
+          if (_isWaslaAlef(nxt.ch, nxt.marks)) {
             nextIdx++;
             continue;
           }
-          if (nxt.ch == _waslaAlef && _isSilent(nxt.marks)) {
+          if ((nxt.ch == _alif ||
+                  nxt.ch == _alifMaqsura ||
+                  nxt.ch == _alifMaqsuraWarsh) &&
+              _isSilent(nxt.marks)) {
             nextIdx++;
             continue;
           }
@@ -286,7 +353,7 @@ abstract final class QuranTajweedAnalyzer {
         }
         paint(L.index, L.end, rule);
       } else if (hasDagger) {
-        if (isMaddLetter && _isSilent(marks)) {
+        if (isMaddLetter && _isSilent(marks) && !_isWaslaAlef(ch, marks)) {
           paint(L.index, L.end, QuranTajweedRule.madd);
         }
         for (var k = L.index; k < L.end && k < n; k++) {
@@ -300,36 +367,56 @@ abstract final class QuranTajweedAnalyzer {
       }
     }
 
-    // Pass B — rules that depend on the following letter.
+    // Pass B — rules that depend on the following letter. A letter claimed
+    // as an idgham-bighunnah target (ي ن م و) must not then be re-processed
+    // as a noon/meem-saakinah source: the idgham has already assimilated it
+    // into a mushaddad nasal (e.g. فِتْنَةٌ ٱنقَلَبَ → the silent noon of
+    // ٱنقَلَبَ is the idgham target, so it must not also trigger ikhfa on
+    // the following ق).
+    final claimedTargets = <int>{};
     for (var idx = 0; idx < letters.length; idx++) {
+      if (claimedTargets.contains(idx)) continue;
       final L = letters[idx];
       final ch = L.ch;
       final marks = L.marks;
 
-      final isTanweenFath = marks.contains(_tanweenFath);
-      final isTanween = marks.any(_tanween.contains);
+      // Warsh writes a tanween with the small-meem sign (ۢ, U+06E2): the
+      // fath on a support alef (شَهِيدًا → شَهِيداَۢ) or the damm/kasr on
+      // the consonant (أَلِيمٌ → اَلِيمُۢ). On a consonant with no vowel
+      // the same sign marks the iqlab of a saakinah noon (مِنْ → مِنۢ),
+      // which the noon-saakinah test below already covers.
+      final hasSmallMeem = marks.contains(_smallMeemIsolated);
+      final isTanweenFath =
+          marks.contains(_tanweenFath) ||
+          marks.contains(_tanweenFathWarsh) ||
+          (ch == _alif && marks.contains(_fatha) && hasSmallMeem);
+      final isTanween = marks.any(_tanween.contains) ||
+          (hasSmallMeem && marks.any(_vowelMarks.contains));
       final isNoonSaakin =
           ch == _noon && (marks.any(_sukunMarks.contains) || _isSilent(marks));
       final isMeemSaakin =
           ch == _meem && (marks.any(_sukunMarks.contains) || _isSilent(marks));
 
       // Find the next real letter. Tanween-fath is written with a silent
-      // support alif (ا / ى) that is not the letter the rule applies to
-      // (e.g. هُدًى مِّن → the tanween meets م, not the ى). A wasla alef
-      // (ٱ) is likewise elided in connected recitation (e.g. خَيْرًا
-      // ٱلْوَصِيَّةُ → the tanween meets ل, not ٱ).
+      // support alif (ا / ى / ے) that is not the letter the rule applies
+      // to (e.g. هُدًى مِّن → the tanween meets م, not the ى). A wasla
+      // alef (ٱ, or the Warsh اَ۬ written with U+06EC) is likewise elided
+      // in connected recitation (e.g. خَيْرًا ٱلْوَصِيَّةُ → the tanween
+      // meets ل, not ٱ).
       var k = idx + 1;
       var skipSupport = isTanweenFath;
       while (k < letters.length) {
         final next = letters[k];
-        if (skipSupport &&
-            (next.ch == _alif || next.ch == _alifMaqsura) &&
-            _isSilent(next.marks)) {
-          skipSupport = false;
+        if (_isWaslaAlef(next.ch, next.marks)) {
           k++;
           continue;
         }
-        if (next.ch == _waslaAlef && _isSilent(next.marks)) {
+        if (skipSupport &&
+            (next.ch == _alif ||
+                next.ch == _alifMaqsura ||
+                next.ch == _alifMaqsuraWarsh) &&
+            _isSilent(next.marks)) {
+          skipSupport = false;
           k++;
           continue;
         }
@@ -352,6 +439,7 @@ abstract final class QuranTajweedAnalyzer {
           // pronounced (gray); the merged letter carries the ghunnah.
           paint(L.index, L.end, QuranTajweedRule.notPronounced);
           paint(next.index, next.end, QuranTajweedRule.ghunnah);
+          claimedTargets.add(k);
         } else if (_idghamBila.contains(nextCh)) {
           paint(L.index, next.end, QuranTajweedRule.idghamBilaGhunnah);
         } else if (nextCh == _baa) {
@@ -397,6 +485,7 @@ abstract final class QuranTajweedAnalyzer {
     return (code >= 0x0621 && code <= 0x063A) ||
         (code >= 0x0641 && code <= 0x064A) ||
         code == _waslaAlef ||
+        code == _alifMaqsuraWarsh ||
         code == 0x06FB ||
         code == 0x06FD;
   }
@@ -422,5 +511,15 @@ abstract final class QuranTajweedAnalyzer {
       if (_vowelMarks.contains(c)) result = c;
     }
     return result;
+  }
+
+  /// True for a word-initial alef that writes the elided hamzat al-wasl:
+  /// the Hafs wasla alef (ٱ), the Warsh rounded mark (اَ۬, U+06EC), or the
+  /// Warsh empty-centre mark (اَ۪ / اِ۪, U+06EA). On non-alef letters the
+  /// latter is the waqf mark and is not elided.
+  static bool _isWaslaAlef(int ch, Set<int> marks) {
+    return ch == _waslaAlef ||
+        marks.contains(_waslaMark) ||
+        (ch == _alif && marks.contains(_waslaMarkWarsh));
   }
 }
