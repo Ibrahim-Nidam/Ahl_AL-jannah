@@ -57,3 +57,47 @@ class GetAyahsByPageUseCase {
     return _repository.getAyahsByPage(page);
   }
 }
+
+@lazySingleton
+class GetWarshAyahsByPageUseCase {
+  final QuranRepository _repository;
+
+  GetWarshAyahsByPageUseCase(this._repository);
+
+  Future<List<AyahEntity>> call(int page) async {
+    return _repository.getWarshAyahsByPage(page);
+  }
+}
+
+@lazySingleton
+class GetWarshAyahsBySurahUseCase {
+  final QuranRepository _repository;
+
+  GetWarshAyahsBySurahUseCase(this._repository);
+
+  Future<List<AyahEntity>> call(int surahId) async {
+    return _repository.getWarshAyahsBySurah(surahId);
+  }
+}
+
+@lazySingleton
+class GetWarshAyahsByJuzUseCase {
+  final QuranRepository _repository;
+
+  GetWarshAyahsByJuzUseCase(this._repository);
+
+  Future<List<AyahEntity>> call(int juz) async {
+    return _repository.getWarshAyahsByJuz(juz);
+  }
+}
+
+@lazySingleton
+class GetWarshSurahAyahCountsUseCase {
+  final QuranRepository _repository;
+
+  GetWarshSurahAyahCountsUseCase(this._repository);
+
+  Future<Map<int, int>> call() async {
+    return _repository.getWarshSurahAyahCounts();
+  }
+}

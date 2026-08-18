@@ -15,6 +15,9 @@ import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/debug_access.dart';
 import '../../../prayer/data/repositories/prayer_notification_service.dart';
 import '../../../prayer/data/repositories/adhan_audio_player.dart';
+import '../../../prayer/domain/entities/prayer_entities.dart';
+import '../../../prayer/domain/usecases/prayer_usecases.dart';
+import '../../../prayer/presentation/bloc/prayer_cubit.dart';
 import '../../domain/entities/settings_entities.dart';
 import '../bloc/settings_cubit.dart';
 
@@ -122,7 +125,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: _ThemePreviewCard(
                   title: l10n.themePreviewTitle,
                   quranSample: l10n.basmala,
-                  quranFont: settings.quranFont,
+                  quranFont: quranFontForRiwaya(settings.quranRiwaya),
                   arabicFontSize: settings.arabicFontSize,
                 ),
               ),
@@ -175,19 +178,18 @@ class _SettingsPageState extends State<SettingsPage> {
 
               const SizedBox(height: 20),
 
-              // Quran font
+              // Quran riwaya (recitation)
               _SubsectionLabel(
-                text: l10n.quranFontSectionTitle,
-                description: l10n.quranFontSectionDescription,
+                text: l10n.quranRiwayaSectionTitle,
+                description: l10n.quranRiwayaSectionDescription,
               ),
               const SizedBox(height: 4),
-              for (final font in QuranFont.values)
-                _QuranFontOptionTile(
-                  label: _quranFontDisplayName(l10n, font),
-                  font: font,
-                  sampleText: l10n.basmala,
-                  selected: settings.quranFont == font,
-                  onTap: () => context.read<SettingsCubit>().setQuranFont(font),
+              for (final riwaya in QuranRiwaya.values)
+                _SelectableOptionTile(
+                  label: _quranRiwayaDisplayName(l10n, riwaya),
+                  selected: settings.quranRiwaya == riwaya,
+                  onTap: () =>
+                      context.read<SettingsCubit>().setQuranRiwaya(riwaya),
                 ),
 
               const SizedBox(height: 20),
@@ -271,6 +273,19 @@ class _SettingsPageState extends State<SettingsPage> {
                   }
                 },
               ),
+
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Divider(height: 32),
+              ),
+
+              // ── Prayer Alerts (notifications vs sound are independent) ──
+              _SectionHeader(
+                title: l10n.prayerAlertsSectionTitle,
+                description: l10n.prayerAlertsSectionDescription,
+              ),
+              const SizedBox(height: 8),
+              const _PrayerAlertsSection(),
 
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
@@ -375,25 +390,35 @@ class _SettingsPageState extends State<SettingsPage> {
                 ListTile(
                   leading: const Icon(Icons.notifications_active_rounded),
                   title: const Text('Test Scheduled Notification (5s)'),
-                  subtitle: const Text('Triggers real system notification in 5s'),
+                  subtitle: const Text(
+                    'Triggers real system notification in 5s',
+                  ),
                   trailing: const Icon(Icons.alarm_rounded),
                   onTap: () async {
                     try {
                       final notifService = getIt<PrayerNotificationService>();
-                      await notifService.scheduleTestAdhanNotification(settings.adhanType, secondsDelay: 5);
+                      await notifService.scheduleTestAdhanNotification(
+                        settings.adhanType,
+                        secondsDelay: 5,
+                      );
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Test Adhan notification scheduled in 5 seconds! Lock your screen or wait...'),
+                            content: Text(
+                              'Test Adhan notification scheduled in 5 seconds! Lock your screen or wait...',
+                            ),
                           ),
                         );
                       }
                     } catch (e) {
-                      AppLogger.error('Failed to schedule test adhan notification', error: e);
+                      AppLogger.error(
+                        'Failed to schedule test adhan notification',
+                        error: e,
+                      );
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error: $e')),
-                        );
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
                       }
                     }
                   },
@@ -488,13 +513,150 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  static String _quranFontDisplayName(AppLocalizations l10n, QuranFont font) {
-    switch (font) {
-      case QuranFont.uthmanic:
-        return l10n.quranFontUthmanicName;
-      case QuranFont.uthmanicHafs:
-        return l10n.quranFontUthmanicHafsName;
+  static String _quranRiwayaDisplayName(
+    AppLocalizations l10n,
+    QuranRiwaya riwaya,
+  ) {
+    switch (riwaya) {
+      case QuranRiwaya.hafsAnAsim:
+        return l10n.quranRiwayaHafsName;
+      case QuranRiwaya.warsh:
+        return l10n.quranRiwayaWarshName;
     }
+  }
+}
+
+/// Prayer notification vs sound controls for the Settings page.
+///
+/// These mirror the toggles in the Prayer tab's bottom sheet: notifications
+/// and adhan sound are fully independent, so a user can keep getting prayer
+/// alerts without any sound. Changes persist via [PrayerCubit] (which
+/// reschedules immediately) so they work whether or not the Prayer tab has
+/// been opened yet.
+class _PrayerAlertsSection extends StatefulWidget {
+  const _PrayerAlertsSection();
+
+  @override
+  State<_PrayerAlertsSection> createState() => _PrayerAlertsSectionState();
+}
+
+class _PrayerAlertsSectionState extends State<_PrayerAlertsSection> {
+  PrayerTimesSettings? _settings;
+  bool _loading = true;
+  bool? _exactAlarmsEnabled;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final settings = await getIt<GetPrayerSettingsUseCase>()();
+    if (!mounted) return;
+    setState(() {
+      _settings = settings;
+      _loading = false;
+    });
+    await _updateExactAlarmStatus();
+  }
+
+  Future<void> _updateExactAlarmStatus() async {
+    if (!Platform.isAndroid || !mounted) return;
+    final enabled = await getIt<PrayerNotificationService>()
+        .canScheduleExactAlarms();
+    if (!mounted) return;
+    setState(() => _exactAlarmsEnabled = enabled);
+  }
+
+  Future<void> _apply(PrayerTimesSettings newSettings) async {
+    setState(() => _settings = newSettings);
+    await getIt<PrayerCubit>().applyPrayerSettings(newSettings);
+  }
+
+  Future<void> _openExactAlarmSettings() async {
+    if (!Platform.isAndroid || !mounted) return;
+    try {
+      final intent = AndroidIntent(
+        action: 'android.settings.REQUEST_SCHEDULE_EXACT_ALARM',
+        data: 'package:${AppConstants.orgName}',
+      );
+      await intent.launch();
+      // Re-check after the user returns from the system settings screen.
+      await _updateExactAlarmStatus();
+    } catch (e) {
+      debugPrint('Failed to open exact alarm settings: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final settings = _settings ?? PrayerTimesSettings.defaultSettings();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SwitchListTile(
+          title: Text(l10n.prayerEnableNotifications),
+          subtitle: Text(l10n.prayerEnableNotificationsSubtitle),
+          value: settings.notificationsEnabled,
+          onChanged: (enabled) =>
+              _apply(settings.copyWith(notificationsEnabled: enabled)),
+        ),
+        SwitchListTile(
+          title: Text(l10n.prayerAdhanSoundToggle),
+          subtitle: Text(l10n.prayerAdhanSoundToggleSubtitle),
+          value: settings.adhanSoundEnabled,
+          onChanged: (enabled) =>
+              _apply(settings.copyWith(adhanSoundEnabled: enabled)),
+        ),
+        _SubsectionLabel(text: l10n.prayerReminderBefore),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SegmentedButton<int>(
+            segments: [
+              ButtonSegment(value: 5, label: Text(l10n.prayerReminder5Min)),
+              ButtonSegment(value: 15, label: Text(l10n.prayerReminder15Min)),
+            ],
+            selected: {settings.reminderInterval},
+            onSelectionChanged: (selection) =>
+                _apply(settings.copyWith(reminderInterval: selection.first)),
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (Platform.isAndroid) ...[
+          ListTile(
+            leading: Icon(
+              _exactAlarmsEnabled == true
+                  ? Icons.verified_rounded
+                  : Icons.warning_amber_rounded,
+              color: _exactAlarmsEnabled == true
+                  ? colorScheme.primary
+                  : colorScheme.error,
+            ),
+            title: Text(l10n.prayerExactAlarmTileTitle),
+            subtitle: Text(
+              _exactAlarmsEnabled == true
+                  ? l10n.prayerExactAlarmEnabled
+                  : l10n.prayerExactAlarmDisabled,
+            ),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _openExactAlarmSettings,
+          ),
+        ],
+      ],
+    );
   }
 }
 
@@ -739,52 +901,6 @@ class _PaletteSwatch extends StatelessWidget {
           border: Border.all(color: Colors.white, width: 2),
         ),
       ),
-    );
-  }
-}
-
-/// Quran font option — renders the sample text directly in that font so
-/// the person can preview it before selecting it.
-class _QuranFontOptionTile extends StatelessWidget {
-  const _QuranFontOptionTile({
-    required this.label,
-    required this.font,
-    required this.sampleText,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final QuranFont font;
-  final String sampleText;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final paletteColors = Theme.of(context).extension<AppPaletteColors>();
-    final quranTextColor = paletteColors?.quranText ?? colorScheme.onSurface;
-
-    return ListTile(
-      title: Text(label),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 6),
-        child: Text(
-          sampleText,
-          style: AppTextStyles.arabicBody(
-            fontSize: 20,
-            fontFamily: font.fontFamily,
-            fontFamilyFallback: font.fontFamilyFallback,
-          ).copyWith(color: quranTextColor),
-          textDirection: TextDirection.rtl,
-          textAlign: TextAlign.right,
-        ),
-      ),
-      trailing: selected
-          ? Icon(Icons.check_circle_rounded, color: colorScheme.primary)
-          : const Icon(Icons.circle_outlined),
-      onTap: onTap,
     );
   }
 }

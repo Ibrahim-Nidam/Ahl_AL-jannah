@@ -44,6 +44,10 @@ import '../../features/qibla/presentation/bloc/qibla_cubit.dart' as _i534;
 import '../../features/quran/data/datasources/quran_database.dart' as _i900;
 import '../../features/quran/data/datasources/quran_local_data_source.dart'
     as _i380;
+import '../../features/quran/data/datasources/quran_warsh_data_source.dart'
+    as _i1020;
+import '../../features/quran/data/datasources/quran_warsh_database.dart'
+    as _i161;
 import '../../features/quran/data/repositories/quran_repository_impl.dart'
     as _i82;
 import '../../features/quran/domain/repositories/quran_repository.dart'
@@ -72,6 +76,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i894.PrayerNotificationService(),
     );
     gh.singleton<_i900.QuranDatabase>(() => _i900.QuranDatabase());
+    gh.singleton<_i161.WarshQuranDatabase>(() => _i161.WarshQuranDatabase());
     gh.lazySingleton<_i722.CalculateQiblaBearingUseCase>(
       () => const _i722.CalculateQiblaBearingUseCase(),
     );
@@ -105,6 +110,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1050.HadithRepository>(
       () => _i570.HadithRepositoryImpl(gh<_i113.HadithLocalDataSource>()),
     );
+    gh.lazySingleton<_i1020.WarshQuranDataSource>(
+      () => _i1020.WarshQuranDataSourceImpl(gh<_i161.WarshQuranDatabase>()),
+    );
     gh.lazySingleton<_i380.QuranLocalDataSource>(
       () => _i380.QuranLocalDataSourceImpl(gh<_i900.QuranDatabase>()),
     );
@@ -112,6 +120,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i534.QiblaCubit(
         gh<_i91.GetUserLocationUseCase>(),
         gh<_i722.CalculateQiblaBearingUseCase>(),
+      ),
+    );
+    gh.lazySingleton<_i498.QuranRepository>(
+      () => _i82.QuranRepositoryImpl(
+        gh<_i380.QuranLocalDataSource>(),
+        gh<_i1020.WarshQuranDataSource>(),
       ),
     );
     gh.lazySingleton<_i279.GetSettingsUseCase>(
@@ -122,9 +136,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i279.ResetSettingsUseCase>(
       () => _i279.ResetSettingsUseCase(gh<_i674.SettingsRepository>()),
-    );
-    gh.lazySingleton<_i498.QuranRepository>(
-      () => _i82.QuranRepositoryImpl(gh<_i380.QuranLocalDataSource>()),
     );
     gh.lazySingleton<_i34.GetSurahsUseCase>(
       () => _i34.GetSurahsUseCase(gh<_i498.QuranRepository>()),
@@ -141,8 +152,33 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i34.GetAyahsByPageUseCase>(
       () => _i34.GetAyahsByPageUseCase(gh<_i498.QuranRepository>()),
     );
+    gh.lazySingleton<_i34.GetWarshAyahsByPageUseCase>(
+      () => _i34.GetWarshAyahsByPageUseCase(gh<_i498.QuranRepository>()),
+    );
+    gh.lazySingleton<_i34.GetWarshAyahsBySurahUseCase>(
+      () => _i34.GetWarshAyahsBySurahUseCase(gh<_i498.QuranRepository>()),
+    );
+    gh.lazySingleton<_i34.GetWarshAyahsByJuzUseCase>(
+      () => _i34.GetWarshAyahsByJuzUseCase(gh<_i498.QuranRepository>()),
+    );
+    gh.lazySingleton<_i34.GetWarshSurahAyahCountsUseCase>(
+      () => _i34.GetWarshSurahAyahCountsUseCase(gh<_i498.QuranRepository>()),
+    );
     gh.lazySingleton<_i203.AdhkarRepository>(
       () => _i537.AdhkarRepositoryImpl(gh<_i793.AdhkarLocalDataSource>()),
+    );
+    gh.lazySingleton<_i431.QuranCubit>(
+      () => _i431.QuranCubit(
+        gh<_i34.GetSurahsUseCase>(),
+        gh<_i34.GetAyahsBySurahUseCase>(),
+        gh<_i34.SearchQuranUseCase>(),
+        gh<_i34.GetAyahsByJuzUseCase>(),
+        gh<_i34.GetAyahsByPageUseCase>(),
+        gh<_i34.GetWarshAyahsByPageUseCase>(),
+        gh<_i34.GetWarshAyahsBySurahUseCase>(),
+        gh<_i34.GetWarshAyahsByJuzUseCase>(),
+        gh<_i34.GetWarshSurahAyahCountsUseCase>(),
+      ),
     );
     gh.factory<_i664.GetHadithAuthors>(
       () => _i664.GetHadithAuthors(gh<_i1050.HadithRepository>()),
@@ -179,15 +215,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i91.CalculatePrayerTimesUseCase>(),
         gh<_i894.PrayerNotificationService>(),
         gh<_i279.GetSettingsUseCase>(),
-      ),
-    );
-    gh.lazySingleton<_i431.QuranCubit>(
-      () => _i431.QuranCubit(
-        gh<_i34.GetSurahsUseCase>(),
-        gh<_i34.GetAyahsBySurahUseCase>(),
-        gh<_i34.SearchQuranUseCase>(),
-        gh<_i34.GetAyahsByJuzUseCase>(),
-        gh<_i34.GetAyahsByPageUseCase>(),
       ),
     );
     gh.lazySingleton<_i46.GetAdhkarCategoriesUseCase>(

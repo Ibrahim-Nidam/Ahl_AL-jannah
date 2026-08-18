@@ -19,12 +19,8 @@ import 'quran_ayah_span_builder.dart';
 import 'quran_inline_headers.dart';
 import 'quran_reading_separator.dart';
 
-typedef QuranPositionChangedCallback = void Function(
-  int surahId,
-  int juz,
-  int page,
-  double scrollOffset,
-);
+typedef QuranPositionChangedCallback =
+    void Function(int surahId, int juz, int page, double scrollOffset);
 
 class QuranLandscapeReader extends StatefulWidget {
   final int initialPage;
@@ -38,6 +34,7 @@ class QuranLandscapeReader extends StatefulWidget {
   final QuranPositionChangedCallback onPositionChanged;
   final String fontFamily;
   final List<String> fontFamilyFallback;
+  final bool warsh;
 
   const QuranLandscapeReader({
     super.key,
@@ -51,7 +48,12 @@ class QuranLandscapeReader extends StatefulWidget {
     required this.onAyahTapped,
     required this.onPositionChanged,
     this.fontFamily = 'Lateef',
-    this.fontFamilyFallback = const ['Noto Naskh Arabic', 'Scheherazade New', 'Arial'],
+    this.fontFamilyFallback = const [
+      'Noto Naskh Arabic',
+      'Scheherazade New',
+      'Arial',
+    ],
+    this.warsh = false,
   });
 
   @override
@@ -130,7 +132,9 @@ class _QuranLandscapeReaderState extends State<QuranLandscapeReader> {
     if (mounted) setState(() {});
     final pageNum = _nextPageToLoad;
     try {
-      final ayahs = await _cubit.getAyahsByPage(pageNum);
+      final ayahs = widget.warsh
+          ? await _cubit.getWarshAyahsByPage(pageNum)
+          : await _cubit.getAyahsByPage(pageNum);
       if (!mounted) return;
 
       // Append at the bottom only — scroll offset stays put, so the
@@ -295,11 +299,14 @@ class _QuranLandscapeReaderState extends State<QuranLandscapeReader> {
           ),
         );
         if (ayah.surahId != 9 && ayah.number == 1) {
-          items.add(QuranInlineBismillah(
-            color: quranTextColor,
-            fontFamily: widget.fontFamily,
-            fontFamilyFallback: widget.fontFamilyFallback,
-          ));
+          items.add(
+            QuranInlineBismillah(
+              color: quranTextColor,
+              fontFamily: widget.fontFamily,
+              fontFamilyFallback: widget.fontFamilyFallback,
+              warsh: widget.warsh,
+            ),
+          );
         }
       } else if (isNewJuz) {
         _flushAyahRun(items, pending, quranTextColor, accent);
@@ -348,7 +355,11 @@ class _QuranLandscapeReaderState extends State<QuranLandscapeReader> {
 
   /// Returns the item list, reusing the cached one when nothing that
   /// affects the rendered ayahs has changed since the last build.
-  List<Widget> _getItems(Color quranTextColor, Color accent, AppLocalizations l10n) {
+  List<Widget> _getItems(
+    Color quranTextColor,
+    Color accent,
+    AppLocalizations l10n,
+  ) {
     final signature = _computeSignature(quranTextColor, accent, l10n);
     if (_itemsSignature == signature && _cachedItems != null) {
       return _cachedItems!;
@@ -359,7 +370,11 @@ class _QuranLandscapeReaderState extends State<QuranLandscapeReader> {
     return items;
   }
 
-  String _computeSignature(Color quranTextColor, Color accent, AppLocalizations l10n) {
+  String _computeSignature(
+    Color quranTextColor,
+    Color accent,
+    AppLocalizations l10n,
+  ) {
     final bookmarks = widget.bookmarkedAyahKeys.toList()..sort();
     final bookmarksStr = bookmarks.join(',');
     return [
@@ -368,6 +383,7 @@ class _QuranLandscapeReaderState extends State<QuranLandscapeReader> {
       _isLoadingMore,
       widget.fontSize,
       widget.showTajweed,
+      widget.warsh,
       widget.selectedAyah?.id ?? -1,
       bookmarksStr,
       widget.allSurahs.length,

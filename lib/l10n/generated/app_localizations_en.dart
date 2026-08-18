@@ -109,6 +109,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quranFontUthmanicHafsName => 'Uthmanic Hafs (V22)';
 
   @override
+  String get quranFontUthmanicWarshName => 'Uthmanic Warsh (V21)';
+
+  @override
+  String get quranRiwayaSectionTitle => 'Quran Recitation';
+
+  @override
+  String get quranRiwayaSectionDescription =>
+      'Choose which recitation (riwaya) the Quran reader uses. Warsh uses its own Uthmani text and font.';
+
+  @override
+  String get quranRiwayaHafsName => 'Hafs \'an Asim';
+
+  @override
+  String get quranRiwayaWarshName => 'Warsh \'an Nafi\'';
+
+  @override
   String get arabicFontSizeSectionTitle => 'Arabic Font Size';
 
   @override
@@ -196,6 +212,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonClear => 'Clear';
+
+  @override
+  String get commonDone => 'Done';
+
+  @override
+  String get commonClose => 'Close';
 
   @override
   String get startupPermissionsTitle => 'Enable prayer and Qibla permissions';

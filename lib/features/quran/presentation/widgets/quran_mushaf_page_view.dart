@@ -36,12 +36,15 @@ class QuranMushafPageView extends StatefulWidget {
   final List<SurahEntity> allSurahs;
   final int? targetAyahNumber;
   final Function(AyahEntity) onAyahTapped;
+
   /// Called with the page that produced the metadata so the parent can
   /// ignore stale callbacks from off-screen / briefly-mounted pages.
-  final Function(int surahId, int juz, int hizb, int pageNumber) onPageMetadataLoaded;
+  final Function(int surahId, int juz, int hizb, int pageNumber)
+  onPageMetadataLoaded;
   final Set<String> bookmarkedAyahKeys;
   final String fontFamily;
   final List<String> fontFamilyFallback;
+  final bool warsh;
 
   const QuranMushafPageView({
     super.key,
@@ -58,7 +61,12 @@ class QuranMushafPageView extends StatefulWidget {
     required this.onPageMetadataLoaded,
     required this.bookmarkedAyahKeys,
     this.fontFamily = 'Lateef',
-    this.fontFamilyFallback = const ['Noto Naskh Arabic', 'Scheherazade New', 'Arial'],
+    this.fontFamilyFallback = const [
+      'Noto Naskh Arabic',
+      'Scheherazade New',
+      'Arial',
+    ],
+    this.warsh = false,
   });
 
   @override
@@ -85,7 +93,8 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
   @override
   void didUpdateWidget(covariant QuranMushafPageView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.pageNumber != widget.pageNumber) {
+    if (oldWidget.pageNumber != widget.pageNumber ||
+        oldWidget.warsh != widget.warsh) {
       _loadPageData();
     }
   }
@@ -106,8 +115,12 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
       setState(() => _isLoading = true);
 
       debugPrint('[MushafPage ${widget.pageNumber}] fetching ayahs...');
-      final loaded = await _cubit.getAyahsByPage(widget.pageNumber);
-      debugPrint('[MushafPage ${widget.pageNumber}] got ${loaded.length} ayahs');
+      final loaded = widget.warsh
+          ? await _cubit.getWarshAyahsByPage(widget.pageNumber)
+          : await _cubit.getAyahsByPage(widget.pageNumber);
+      debugPrint(
+        '[MushafPage ${widget.pageNumber}] got ${loaded.length} ayahs',
+      );
       if (!mounted) return;
 
       for (final r in _recognizers.values) {
@@ -123,7 +136,9 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
         _ayahs = loaded;
         _isLoading = false;
       });
-      debugPrint('[MushafPage ${widget.pageNumber}] state updated: _ayahs.length=${_ayahs.length} isLoading=false');
+      debugPrint(
+        '[MushafPage ${widget.pageNumber}] state updated: _ayahs.length=${_ayahs.length} isLoading=false',
+      );
 
       if (loaded.isNotEmpty) {
         widget.onPageMetadataLoaded(
@@ -203,7 +218,9 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
 
   Widget _buildMushafFlow(Color quranTextColor, Color accent) {
     final groups = _groupBySurah(_ayahs);
-    debugPrint('[MushafPage ${widget.pageNumber}] _buildMushafFlow: ${groups.length} surah groups, quranTextColor=$quranTextColor');
+    debugPrint(
+      '[MushafPage ${widget.pageNumber}] _buildMushafFlow: ${groups.length} surah groups, quranTextColor=$quranTextColor',
+    );
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       child: Column(
@@ -222,6 +239,7 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
                   color: quranTextColor,
                   fontFamily: widget.fontFamily,
                   fontFamilyFallback: widget.fontFamilyFallback,
+                  warsh: widget.warsh,
                 ),
             ],
             Padding(
@@ -261,8 +279,9 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
         final l10n = AppLocalizations.of(context);
         final ayah = _ayahs[index];
         final isSelected = widget.selectedAyah?.id == ayah.id;
-        final isBookmarked =
-            widget.bookmarkedAyahKeys.contains('${ayah.surahId}-${ayah.number}');
+        final isBookmarked = widget.bookmarkedAyahKeys.contains(
+          '${ayah.surahId}-${ayah.number}',
+        );
         final key = _ayahKeys[ayah.number];
         final translationText = widget.translationLang == 'fr'
             ? ayah.translationFr
@@ -282,8 +301,8 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
                 color: isSelected
                     ? accent
                     : (isDark
-                        ? AppColors.dividerDark.withAlpha(50)
-                        : AppColors.divider.withAlpha(100)),
+                          ? AppColors.dividerDark.withAlpha(50)
+                          : AppColors.divider.withAlpha(100)),
                 width: isSelected ? 2 : 1,
               ),
             ),
@@ -383,14 +402,18 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
 
     if (_isLoading) {
       return Center(
-        child: CircularProgressIndicator(color: palette?.primary ?? AppColors.primaryGreen),
+        child: CircularProgressIndicator(
+          color: palette?.primary ?? AppColors.primaryGreen,
+        ),
       );
     }
     if (_error != null) {
       return Center(child: Text(l10n.commonError(_error!)));
     }
     if (_ayahs.isEmpty) {
-      debugPrint('[MushafPage ${widget.pageNumber}] WARNING: no ayahs, showing empty message');
+      debugPrint(
+        '[MushafPage ${widget.pageNumber}] WARNING: no ayahs, showing empty message',
+      );
       return Center(child: Text(l10n.quranNoVersesOnPage));
     }
 

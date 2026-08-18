@@ -22,7 +22,7 @@ enum AppColorPalette { classic, ocean, desert }
 /// registering it in `pubspec.yaml`, (2) adding an enum case here with
 /// its `fontFamily`/`fontFamilyFallback` in [QuranFontX] below. No other
 /// file needs to change.
-enum QuranFont { uthmanic, uthmanicHafs }
+enum QuranFont { uthmanic, uthmanicHafs, uthmanicWarsh }
 
 /// Maps each [QuranFont] to its concrete font family + fallback chain.
 /// Kept next to the enum (not in `core/theme`) so `core/theme` never has
@@ -34,6 +34,8 @@ extension QuranFontX on QuranFont {
         return 'Lateef';
       case QuranFont.uthmanicHafs:
         return 'UthmanicHafs';
+      case QuranFont.uthmanicWarsh:
+        return 'UthmanicWarsh';
     }
   }
 
@@ -41,6 +43,7 @@ extension QuranFontX on QuranFont {
     switch (this) {
       case QuranFont.uthmanic:
       case QuranFont.uthmanicHafs:
+      case QuranFont.uthmanicWarsh:
         return const ['Noto Naskh Arabic', 'Scheherazade New', 'Arial'];
     }
   }
@@ -48,7 +51,19 @@ extension QuranFontX on QuranFont {
 
 /// Quran riwaya (narration/transmission). Additional riwayat can be
 /// appended later.
-enum QuranRiwaya { hafsAnAsim }
+enum QuranRiwaya { hafsAnAsim, warsh }
+
+/// The Quran font is no longer user-selectable — it is derived from the
+/// active [QuranRiwaya] so the mushaf always renders in a font that
+/// matches its orthography (Hafs → Uthmani Hafs, Warsh → Uthmani Warsh).
+QuranFont quranFontForRiwaya(QuranRiwaya riwaya) {
+  switch (riwaya) {
+    case QuranRiwaya.hafsAnAsim:
+      return QuranFont.uthmanicHafs;
+    case QuranRiwaya.warsh:
+      return QuranFont.uthmanicWarsh;
+  }
+}
 
 /// Adhan sound used for prayer notifications.
 ///
@@ -74,7 +89,6 @@ class SettingsEntity {
   final AppColorPalette colorPalette;
 
   // ── Quran ──
-  final QuranFont quranFont;
   final QuranRiwaya quranRiwaya;
 
   /// Arabic reading font size (px) shared by the Quran reader, Hadith
@@ -108,7 +122,6 @@ class SettingsEntity {
     required this.language,
     required this.themeMode,
     required this.colorPalette,
-    required this.quranFont,
     required this.quranRiwaya,
     required this.arabicFontSize,
     required this.notificationsEnabled,
@@ -130,7 +143,6 @@ class SettingsEntity {
       language: AppLanguage.system,
       themeMode: AppThemeMode.system,
       colorPalette: AppColorPalette.classic,
-      quranFont: QuranFont.uthmanicHafs,
       quranRiwaya: QuranRiwaya.hafsAnAsim,
       arabicFontSize: 28.0,
       notificationsEnabled: true,
@@ -148,7 +160,6 @@ class SettingsEntity {
     AppLanguage? language,
     AppThemeMode? themeMode,
     AppColorPalette? colorPalette,
-    QuranFont? quranFont,
     QuranRiwaya? quranRiwaya,
     double? arabicFontSize,
     bool? notificationsEnabled,
@@ -164,7 +175,6 @@ class SettingsEntity {
       language: language ?? this.language,
       themeMode: themeMode ?? this.themeMode,
       colorPalette: colorPalette ?? this.colorPalette,
-      quranFont: quranFont ?? this.quranFont,
       quranRiwaya: quranRiwaya ?? this.quranRiwaya,
       arabicFontSize: arabicFontSize ?? this.arabicFontSize,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,

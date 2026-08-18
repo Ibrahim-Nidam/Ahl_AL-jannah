@@ -109,6 +109,22 @@ class AppLocalizationsAr extends AppLocalizations {
   String get quranFontUthmanicHafsName => 'عثماني حفص (٢٢)';
 
   @override
+  String get quranFontUthmanicWarshName => 'عثماني ورش (٢١)';
+
+  @override
+  String get quranRiwayaSectionTitle => 'رواية القرآن';
+
+  @override
+  String get quranRiwayaSectionDescription =>
+      'اختر الرواية التي يستخدمها قارئ القرآن. تستخدم رواية ورش نصها وخطها العثمانيين.';
+
+  @override
+  String get quranRiwayaHafsName => 'حفص عن عاصم';
+
+  @override
+  String get quranRiwayaWarshName => 'ورش عن نافع';
+
+  @override
   String get arabicFontSizeSectionTitle => 'حجم الخط العربي';
 
   @override
@@ -196,6 +212,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get commonClear => 'مسح';
+
+  @override
+  String get commonDone => 'تم';
+
+  @override
+  String get commonClose => 'إغلاق';
 
   @override
   String get startupPermissionsTitle => 'تفعيل أذونات الصلاة والقبلة';

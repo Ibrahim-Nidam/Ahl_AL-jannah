@@ -292,6 +292,36 @@ abstract class AppLocalizations {
   /// **'Uthmanic Hafs (V22)'**
   String get quranFontUthmanicHafsName;
 
+  /// No description provided for @quranFontUthmanicWarshName.
+  ///
+  /// In en, this message translates to:
+  /// **'Uthmanic Warsh (V21)'**
+  String get quranFontUthmanicWarshName;
+
+  /// No description provided for @quranRiwayaSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quran Recitation'**
+  String get quranRiwayaSectionTitle;
+
+  /// No description provided for @quranRiwayaSectionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose which recitation (riwaya) the Quran reader uses. Warsh uses its own Uthmani text and font.'**
+  String get quranRiwayaSectionDescription;
+
+  /// No description provided for @quranRiwayaHafsName.
+  ///
+  /// In en, this message translates to:
+  /// **'Hafs \'an Asim'**
+  String get quranRiwayaHafsName;
+
+  /// No description provided for @quranRiwayaWarshName.
+  ///
+  /// In en, this message translates to:
+  /// **'Warsh \'an Nafi\''**
+  String get quranRiwayaWarshName;
+
   /// No description provided for @arabicFontSizeSectionTitle.
   ///
   /// In en, this message translates to:
@@ -453,6 +483,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Clear'**
   String get commonClear;
+
+  /// No description provided for @commonDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get commonDone;
+
+  /// No description provided for @commonClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get commonClose;
 
   /// No description provided for @startupPermissionsTitle.
   ///

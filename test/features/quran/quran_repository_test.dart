@@ -3,8 +3,24 @@ import 'package:drift/native.dart';
 import 'package:drift/drift.dart';
 import 'package:ahl_jannah/features/quran/data/datasources/quran_database.dart';
 import 'package:ahl_jannah/features/quran/data/datasources/quran_local_data_source.dart';
+import 'package:ahl_jannah/features/quran/data/datasources/quran_warsh_data_source.dart';
 import 'package:ahl_jannah/features/quran/data/repositories/quran_repository_impl.dart';
+import 'package:ahl_jannah/features/quran/domain/entities/quran_entities.dart';
 import 'package:sqlite3/sqlite3.dart' show AllowedArgumentCount;
+
+class _FakeWarshDataSource implements WarshQuranDataSource {
+  @override
+  Future<List<AyahEntity>> getAyahsByPage(int page) async => [];
+
+  @override
+  Future<List<AyahEntity>> getAyahsBySurah(int surahId) async => [];
+
+  @override
+  Future<List<AyahEntity>> getAyahsByJuz(int juz) async => [];
+
+  @override
+  Future<Map<int, int>> getSurahAyahCounts() async => {};
+}
 
 void main() {
   late QuranDatabase database;
@@ -22,7 +38,12 @@ void main() {
             function: (args) {
               final text = args.first as String?;
               if (text == null) return null;
-              var normalized = text.replaceAll(RegExp(r'[\u064B-\u0652\u0670\u0640\u0653-\u0655\u06DF-\u06E8\u06EA-\u06EC]'), '');
+              var normalized = text.replaceAll(
+                RegExp(
+                  r'[\u064B-\u0652\u0670\u0640\u0653-\u0655\u06DF-\u06E8\u06EA-\u06EC]',
+                ),
+                '',
+              );
               normalized = normalized.replaceAll(RegExp(r'[أإآٱ]'), 'ا');
               normalized = normalized.replaceAll('ة', 'ه');
               return normalized;
@@ -32,7 +53,7 @@ void main() {
       ),
     );
     dataSource = QuranLocalDataSourceImpl(database);
-    repository = QuranRepositoryImpl(dataSource);
+    repository = QuranRepositoryImpl(dataSource, _FakeWarshDataSource());
   });
 
   tearDown(() async {
@@ -41,7 +62,9 @@ void main() {
 
   test('can insert and retrieve surahs and ayahs', () async {
     // Insert test Surah
-    await database.into(database.surahs).insert(
+    await database
+        .into(database.surahs)
+        .insert(
           SurahsCompanion.insert(
             id: const Value(1),
             nameAr: 'الفاتحة',
@@ -52,7 +75,9 @@ void main() {
         );
 
     // Insert test Ayah
-    await database.into(database.ayahs).insert(
+    await database
+        .into(database.ayahs)
+        .insert(
           AyahsCompanion.insert(
             id: const Value(1),
             surahId: 1,
@@ -77,7 +102,9 @@ void main() {
 
   test('searching Quran matches text and translations', () async {
     // Insert test Surah
-    await database.into(database.surahs).insert(
+    await database
+        .into(database.surahs)
+        .insert(
           SurahsCompanion.insert(
             id: const Value(2),
             nameAr: 'البقرة',
@@ -88,7 +115,9 @@ void main() {
         );
 
     // Insert test Ayahs
-    await database.into(database.ayahs).insert(
+    await database
+        .into(database.ayahs)
+        .insert(
           AyahsCompanion.insert(
             id: const Value(2),
             surahId: 2,
@@ -102,14 +131,20 @@ void main() {
           ),
         );
 
-    await database.into(database.ayahs).insert(
+    await database
+        .into(database.ayahs)
+        .insert(
           AyahsCompanion.insert(
             id: const Value(3),
             surahId: 2,
             number: 255,
             textAr: 'اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ',
-            translationEn: const Value('Allah - there is no deity except Him, the Ever-Living, the Sustainer of all existence.'),
-            translationFr: const Value('Allah! Point de divinité à part Lui, le Vivant, Celui qui subsiste par lui-même.'),
+            translationEn: const Value(
+              'Allah - there is no deity except Him, the Ever-Living, the Sustainer of all existence.',
+            ),
+            translationFr: const Value(
+              'Allah! Point de divinité à part Lui, le Vivant, Celui qui subsiste par lui-même.',
+            ),
             juz: 3,
             page: 42,
             hizb: 5,
@@ -122,7 +157,9 @@ void main() {
     expect(arabicResults.first.number, 255);
 
     // Search Arabic text WITHOUT diacritics and normalized letters
-    final arabicNoTashkilResults = await repository.searchQuran('الله لا اله الا هو الحي القيوم');
+    final arabicNoTashkilResults = await repository.searchQuran(
+      'الله لا اله الا هو الحي القيوم',
+    );
     expect(arabicNoTashkilResults.length, 1);
     expect(arabicNoTashkilResults.first.number, 255);
 

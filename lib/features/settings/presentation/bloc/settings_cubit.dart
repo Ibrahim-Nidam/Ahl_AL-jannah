@@ -89,15 +89,6 @@ class SettingsCubit extends Cubit<SettingsState> {
     }
   }
 
-  Future<void> setQuranFont(QuranFont quranFont) async {
-    final currentState = state;
-    if (currentState is SettingsLoadSuccess) {
-      await updateSettings(
-        currentState.settings.copyWith(quranFont: quranFont),
-      );
-    }
-  }
-
   Future<void> setQuranRiwaya(QuranRiwaya quranRiwaya) async {
     final currentState = state;
     if (currentState is SettingsLoadSuccess) {

@@ -9,6 +9,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/widgets/clear_text_suffix.dart';
+import '../../../settings/domain/entities/settings_entities.dart';
+import '../../../settings/presentation/bloc/settings_cubit.dart';
 import '../../data/services/quran_bookmark_storage.dart';
 import '../../domain/entities/quran_bookmark.dart';
 import '../../domain/entities/quran_entities.dart';
@@ -24,7 +26,9 @@ class QuranPage extends StatefulWidget {
 }
 
 class _QuranPageState extends State<QuranPage>
-    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin<QuranPage> {
+    with
+        SingleTickerProviderStateMixin,
+        AutomaticKeepAliveClientMixin<QuranPage> {
   late final QuranCubit _cubit;
   late final TabController _tabController;
   final TextEditingController _surahFilterController = TextEditingController();
@@ -34,6 +38,11 @@ class _QuranPageState extends State<QuranPage>
   final QuranBookmarkStorage _bookmarkStorage = QuranBookmarkStorage();
   Future<QuranBookmark?>? _lastPositionFuture;
   bool _autoResumed = false;
+
+  /// Warsh per-surah ayah counts (loaded lazily when the Warsh riwaya is
+  /// active; counts differ from Hafs in 51 surahs).
+  Map<int, int> _warshAyahCounts = const {};
+  QuranRiwaya? _lastCountsRiwaya;
 
   @override
   bool get wantKeepAlive => true;
@@ -49,7 +58,41 @@ class _QuranPageState extends State<QuranPage>
         _surahFilterQuery = _surahFilterController.text.toLowerCase();
       });
     });
+    _syncSurahCountsForRiwaya();
     _refreshLastPosition(autoResume: true);
+  }
+
+  /// Loads (or clears) the Warsh surah counts to match the active riwaya.
+  /// No-op when the riwaya hasn't changed since the last sync, so it is
+  /// safe to call from a settings listener on every settings update.
+  Future<void> _syncSurahCountsForRiwaya() async {
+    final settingsState = getIt<SettingsCubit>().state;
+    final riwaya = settingsState is SettingsLoadSuccess
+        ? settingsState.settings.quranRiwaya
+        : QuranRiwaya.hafsAnAsim;
+    if (riwaya == _lastCountsRiwaya) return;
+    _lastCountsRiwaya = riwaya;
+
+    if (riwaya == QuranRiwaya.warsh) {
+      try {
+        final counts = await _cubit.getWarshSurahAyahCounts();
+        if (mounted) setState(() => _warshAyahCounts = counts);
+      } catch (e) {
+        debugPrint('[QuranPage] failed to load Warsh surah counts: $e');
+        if (mounted) setState(() => _warshAyahCounts = const {});
+      }
+    } else {
+      if (mounted) setState(() => _warshAyahCounts = const {});
+    }
+  }
+
+  /// Ayah count for a surah under the active riwaya (Hafs counts from the
+  /// surah table, Warsh counts from the Warsh ayah table).
+  int _ayahCountFor(SurahEntity surah) {
+    if (_warshAyahCounts.isNotEmpty) {
+      return _warshAyahCounts[surah.id] ?? surah.ayahCount;
+    }
+    return surah.ayahCount;
   }
 
   @override
@@ -65,8 +108,15 @@ class _QuranPageState extends State<QuranPage>
   /// If [autoResume] is true and the user was actively inside a surah
   /// when closing the app, automatically opens the reader at the saved position.
   void _refreshLastPosition({bool autoResume = false}) {
+    final riwaya = getIt<SettingsCubit>().state is SettingsLoadSuccess
+        ? (getIt<SettingsCubit>().state as SettingsLoadSuccess)
+              .settings
+              .quranRiwaya
+        : QuranRiwaya.hafsAnAsim;
     setState(() {
-      _lastPositionFuture = _bookmarkStorage.getLastPosition().then((pos) async {
+      _lastPositionFuture = _bookmarkStorage.getLastPosition(riwaya).then((
+        pos,
+      ) async {
         if (pos != null && autoResume && !_autoResumed && mounted) {
           final prefs = await SharedPreferences.getInstance();
           final wasInsideReader =
@@ -116,106 +166,121 @@ class _QuranPageState extends State<QuranPage>
 
     return BlocProvider.value(
       value: _cubit,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(l10n.navQuran),
-          titleTextStyle: AppTextStyles.arabicHeading(fontSize: 22).copyWith(
-            color: isDark ? AppColors.onSurfaceDark : AppColors.onSurfaceLight,
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.bookmarks_outlined),
-              onPressed: () => context
-                  .pushNamed('quran_bookmarks')
-                  .then((_) => _refreshLastPosition()),
-              tooltip: l10n.quranBookmarksTooltip,
+      child: BlocListener<SettingsCubit, SettingsState>(
+        listenWhen: (previous, current) =>
+            current is SettingsLoadSuccess &&
+            (previous is! SettingsLoadSuccess ||
+                previous.settings.quranRiwaya != current.settings.quranRiwaya),
+        listener: (context, state) {
+          _syncSurahCountsForRiwaya();
+          _refreshLastPosition();
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(l10n.navQuran),
+            titleTextStyle: AppTextStyles.arabicHeading(fontSize: 22).copyWith(
+              color: isDark
+                  ? AppColors.onSurfaceDark
+                  : AppColors.onSurfaceLight,
             ),
-          ],
-          bottom: TabBar(
-            controller: _tabController,
-            indicatorColor: AppColors.accentGold,
-            labelColor: AppColors.primaryGreen,
-            unselectedLabelColor: isDark ? Colors.white70 : Colors.black54,
-            tabs: [
-              Tab(text: l10n.quranTabSurah),
-              Tab(text: l10n.quranTabJuz),
-              Tab(text: l10n.quranTabSearch),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.bookmarks_outlined),
+                onPressed: () => context
+                    .pushNamed('quran_bookmarks')
+                    .then((_) => _refreshLastPosition()),
+                tooltip: l10n.quranBookmarksTooltip,
+              ),
+            ],
+            bottom: TabBar(
+              controller: _tabController,
+              indicatorColor: AppColors.accentGold,
+              labelColor: AppColors.primaryGreen,
+              unselectedLabelColor: isDark ? Colors.white70 : Colors.black54,
+              tabs: [
+                Tab(text: l10n.quranTabSurah),
+                Tab(text: l10n.quranTabJuz),
+                Tab(text: l10n.quranTabSearch),
+              ],
+            ),
+          ),
+          body: Column(
+            children: [
+              _buildContinueReadingBanner(isDark),
+              Expanded(
+                child: BlocBuilder<QuranCubit, QuranState>(
+                  builder: (context, state) {
+                    final l10n = AppLocalizations.of(context);
+                    if (state is QuranLoadInProgress &&
+                        state is! QuranLoadSuccess) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primaryGreen,
+                        ),
+                      );
+                    }
+
+                    if (state is QuranLoadFailure) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.error_outline,
+                              size: 60,
+                              color: AppColors.error,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(l10n.quranFailedToLoad(state.message)),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () => _cubit.loadSurahs(),
+                              child: Text(l10n.commonRetry),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    List<SurahEntity> surahs = [];
+                    List<AyahEntity> searchResults = [];
+                    String searchQuery = '';
+                    bool isSearching = false;
+                    String? searchError;
+
+                    if (state is QuranLoadSuccess) {
+                      surahs = state.surahs;
+                      searchResults = state.searchResults;
+                      searchQuery = state.searchQuery;
+                      isSearching = state.isSearching;
+                      searchError = state.searchError;
+                    }
+
+                    return TabBarView(
+                      controller: _tabController,
+                      children: [
+                        // ── Tab 1: Surah List ──
+                        _buildSurahTab(surahs, isDark),
+
+                        // ── Tab 2: Juz List ──
+                        _buildJuzTab(isDark, surahs),
+
+                        // ── Tab 3: Search ──
+                        _buildSearchTab(
+                          searchResults,
+                          searchQuery,
+                          isDark,
+                          surahs,
+                          isSearching,
+                          searchError,
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
             ],
           ),
-        ),
-        body: Column(
-          children: [
-            _buildContinueReadingBanner(isDark),
-            Expanded(
-              child: BlocBuilder<QuranCubit, QuranState>(
-                builder: (context, state) {
-                  final l10n = AppLocalizations.of(context);
-                  if (state is QuranLoadInProgress && state is! QuranLoadSuccess) {
-                    return const Center(
-                      child: CircularProgressIndicator(color: AppColors.primaryGreen),
-                    );
-                  }
-
-                  if (state is QuranLoadFailure) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            size: 60,
-                            color: AppColors.error,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(l10n.quranFailedToLoad(state.message)),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () => _cubit.loadSurahs(),
-                            child: Text(l10n.commonRetry),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  List<SurahEntity> surahs = [];
-                  List<AyahEntity> searchResults = [];
-                  String searchQuery = '';
-                  bool isSearching = false;
-                  String? searchError;
-
-                  if (state is QuranLoadSuccess) {
-                    surahs = state.surahs;
-                    searchResults = state.searchResults;
-                    searchQuery = state.searchQuery;
-                    isSearching = state.isSearching;
-                    searchError = state.searchError;
-                  }
-
-                  return TabBarView(
-                    controller: _tabController,
-                    children: [
-                      // ── Tab 1: Surah List ──
-                      _buildSurahTab(surahs, isDark),
-
-                      // ── Tab 2: Juz List ──
-                      _buildJuzTab(isDark, surahs),
-
-                      // ── Tab 3: Search ──
-                      _buildSearchTab(
-                        searchResults,
-                        searchQuery,
-                        isDark,
-                        surahs,
-                        isSearching,
-                        searchError,
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -244,7 +309,10 @@ class _QuranPageState extends State<QuranPage>
                 });
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: isDark
@@ -273,7 +341,10 @@ class _QuranPageState extends State<QuranPage>
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            l10n.quranPageDotSurah(position.page, position.surahName),
+                            l10n.quranPageDotSurah(
+                              position.page,
+                              position.surahName,
+                            ),
                             style: AppTextStyles.bodyLarge.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -282,7 +353,11 @@ class _QuranPageState extends State<QuranPage>
                         ],
                       ),
                     ),
-                    const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
+                    const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      color: Colors.white,
+                      size: 16,
+                    ),
                   ],
                 ),
               ),
@@ -388,7 +463,7 @@ class _QuranPageState extends State<QuranPage>
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        l10n.quranAyahCount(surah.ayahCount),
+                        l10n.quranAyahCount(_ayahCountFor(surah)),
                         style: AppTextStyles.bodySmall.copyWith(
                           color: isDark
                               ? AppColors.onSurfaceDarkVariant
@@ -509,7 +584,10 @@ class _QuranPageState extends State<QuranPage>
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     suffixIcon: ClearTextSuffix(controller: _searchController),
                   ),
                   onSubmitted: (val) {
@@ -553,32 +631,34 @@ class _QuranPageState extends State<QuranPage>
         Expanded(
           child: isSearching
               ? const Center(
-                  child: CircularProgressIndicator(color: AppColors.primaryGreen),
+                  child: CircularProgressIndicator(
+                    color: AppColors.primaryGreen,
+                  ),
                 )
               : searchError != null
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          l10n.commonError(searchError),
-                          style: const TextStyle(color: AppColors.error),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    )
-                  : results.isEmpty
-                      ? Center(
-                          child: Text(
-                            query.isEmpty
-                                ? l10n.quranSearchPrompt
-                                : l10n.quranNoResults,
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              color: isDark
-                                  ? AppColors.onSurfaceDarkVariant
-                                  : AppColors.onSurfaceLightVariant,
-                            ),
-                          ),
-                        )
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      l10n.commonError(searchError),
+                      style: const TextStyle(color: AppColors.error),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              : results.isEmpty
+              ? Center(
+                  child: Text(
+                    query.isEmpty
+                        ? l10n.quranSearchPrompt
+                        : l10n.quranNoResults,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: isDark
+                          ? AppColors.onSurfaceDarkVariant
+                          : AppColors.onSurfaceLightVariant,
+                    ),
+                  ),
+                )
               : ListView.builder(
                   itemCount: results.length,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -641,7 +721,9 @@ class _QuranPageState extends State<QuranPage>
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(ayah.textAr),
+                              QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(
+                                ayah.textAr,
+                              ),
                               style: AppTextStyles.arabicBody(fontSize: 16)
                                   .copyWith(
                                     color: isDark

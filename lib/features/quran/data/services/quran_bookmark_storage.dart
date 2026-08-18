@@ -3,12 +3,32 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../settings/domain/entities/settings_entities.dart';
 import '../../domain/entities/quran_bookmark.dart';
 
+/// Bookmark storage is scoped per riwaya: Hafs and Warsh use different
+/// SharedPreferences keys, so each riwaya keeps its own bookmarks and
+/// "last reading position". The data is tiny (tens of bytes per entry), so
+/// this adds no meaningful storage; it just avoids the ayah-number and
+/// text mismatches between the two editions.
 class QuranBookmarkStorage {
-  Future<List<QuranBookmark>> loadBookmarks() async {
+  /// Existing Hafs keys are reused unchanged, so bookmarks saved before
+  /// per-riwaya storage existed keep working (they are Hafs bookmarks).
+  String _bookmarksKey(QuranRiwaya riwaya) {
+    return riwaya == QuranRiwaya.warsh
+        ? '${AppConstants.keyQuranBookmarks}_warsh'
+        : AppConstants.keyQuranBookmarks;
+  }
+
+  String _lastPositionKey(QuranRiwaya riwaya) {
+    return riwaya == QuranRiwaya.warsh
+        ? '${AppConstants.keyQuranLastPosition}_warsh'
+        : AppConstants.keyQuranLastPosition;
+  }
+
+  Future<List<QuranBookmark>> loadBookmarks(QuranRiwaya riwaya) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(AppConstants.keyQuranBookmarks);
+    final raw = prefs.getString(_bookmarksKey(riwaya));
     if (raw == null || raw.trim().isEmpty) {
       return [];
     }
@@ -26,6 +46,7 @@ class QuranBookmarkStorage {
   }
 
   Future<void> addPageBookmark({
+    required QuranRiwaya riwaya,
     required int surahId,
     required String surahName,
     required int page,
@@ -44,10 +65,11 @@ class QuranBookmarkStorage {
       createdAt: DateTime.now(),
       readingMode: readingMode,
     );
-    await _saveBookmark(bookmark);
+    await _saveBookmark(riwaya, bookmark);
   }
 
   Future<void> addAyahBookmark({
+    required QuranRiwaya riwaya,
     required int surahId,
     required String surahName,
     required int page,
@@ -66,25 +88,28 @@ class QuranBookmarkStorage {
       createdAt: DateTime.now(),
       readingMode: readingMode,
     );
-    await _saveBookmark(bookmark);
+    await _saveBookmark(riwaya, bookmark);
   }
 
-  Future<void> removeBookmark(String id) async {
-    final bookmarks = await loadBookmarks();
+  Future<void> removeBookmark(QuranRiwaya riwaya, String id) async {
+    final bookmarks = await loadBookmarks(riwaya);
     bookmarks.removeWhere((bookmark) => bookmark.id == id);
-    await _persist(bookmarks);
+    await _persist(riwaya, bookmarks);
   }
 
-  Future<void> _saveBookmark(QuranBookmark bookmark) async {
-    final bookmarks = await loadBookmarks();
+  Future<void> _saveBookmark(QuranRiwaya riwaya, QuranBookmark bookmark) async {
+    final bookmarks = await loadBookmarks(riwaya);
     bookmarks.add(bookmark);
-    await _persist(bookmarks);
+    await _persist(riwaya, bookmarks);
   }
 
-  Future<void> _persist(List<QuranBookmark> bookmarks) async {
+  Future<void> _persist(
+    QuranRiwaya riwaya,
+    List<QuranBookmark> bookmarks,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      AppConstants.keyQuranBookmarks,
+      _bookmarksKey(riwaya),
       jsonEncode(bookmarks.map((bookmark) => bookmark.toJson()).toList()),
     );
   }
@@ -96,20 +121,19 @@ class QuranBookmarkStorage {
   // so it never appears in the Bookmarks page and never risks corrupting
   // or being confused with bookmarks the user explicitly created.
 
-  Future<QuranBookmark?> getLastPosition() async {
+  Future<QuranBookmark?> getLastPosition(QuranRiwaya riwaya) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(AppConstants.keyQuranLastPosition);
+    final raw = prefs.getString(_lastPositionKey(riwaya));
     if (raw == null || raw.trim().isEmpty) return null;
     try {
-      return QuranBookmark.fromJson(
-        jsonDecode(raw) as Map<String, dynamic>,
-      );
+      return QuranBookmark.fromJson(jsonDecode(raw) as Map<String, dynamic>);
     } catch (_) {
       return null;
     }
   }
 
   Future<void> saveLastPosition({
+    required QuranRiwaya riwaya,
     required int surahId,
     required String surahName,
     required int page,
@@ -132,13 +156,13 @@ class QuranBookmarkStorage {
     );
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      AppConstants.keyQuranLastPosition,
+      _lastPositionKey(riwaya),
       jsonEncode(position.toJson()),
     );
   }
 
-  Future<void> clearLastPosition() async {
+  Future<void> clearLastPosition(QuranRiwaya riwaya) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(AppConstants.keyQuranLastPosition);
+    await prefs.remove(_lastPositionKey(riwaya));
   }
 }

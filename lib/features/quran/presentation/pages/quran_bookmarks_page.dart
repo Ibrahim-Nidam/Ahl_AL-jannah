@@ -2,16 +2,20 @@ import 'package:ahl_jannah/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/di/injection.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/extensions.dart';
+import '../../../settings/domain/entities/settings_entities.dart';
+import '../../../settings/presentation/bloc/settings_cubit.dart';
 import '../../data/services/quran_bookmark_storage.dart';
 import '../../domain/entities/quran_bookmark.dart';
 
 /// Lists saved page + ayah bookmarks in two tabs.
 ///
-/// Bookmarks live in [QuranBookmarkStorage]; this page keeps a local copy
-/// of the list so the UI reflects deletions immediately (optimistic
+/// Bookmarks live in [QuranBookmarkStorage], scoped to the active riwaya
+/// (Hafs and Warsh keep separate bookmark sets). This page keeps a local
+/// copy of the list so the UI reflects deletions immediately (optimistic
 /// remove) and reloads it every time a pushed reader page pops back,
 /// so changes made inside the reader are visible right away.
 class QuranBookmarksPage extends StatefulWidget {
@@ -30,6 +34,12 @@ class _QuranBookmarksPageState extends State<QuranBookmarksPage>
   bool _loading = true;
   String? _error;
 
+  QuranRiwaya _activeRiwaya() {
+    final state = getIt<SettingsCubit>().state;
+    if (state is SettingsLoadSuccess) return state.settings.quranRiwaya;
+    return QuranRiwaya.hafsAnAsim;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -45,7 +55,7 @@ class _QuranBookmarksPageState extends State<QuranBookmarksPage>
 
   Future<void> _load() async {
     try {
-      final bookmarks = await _storage.loadBookmarks();
+      final bookmarks = await _storage.loadBookmarks(_activeRiwaya());
       if (!mounted) return;
       setState(() {
         _bookmarks = bookmarks;
@@ -65,10 +75,12 @@ class _QuranBookmarksPageState extends State<QuranBookmarksPage>
   /// Re-loads on failure so the item reappears if the write failed.
   Future<void> _delete(QuranBookmark bookmark) async {
     setState(() {
-      _bookmarks = _bookmarks.where((b) => b.id != bookmark.id).toList(growable: false);
+      _bookmarks = _bookmarks
+          .where((b) => b.id != bookmark.id)
+          .toList(growable: false);
     });
     try {
-      await _storage.removeBookmark(bookmark.id);
+      await _storage.removeBookmark(_activeRiwaya(), bookmark.id);
     } catch (_) {
       await _load();
     }
@@ -112,7 +124,10 @@ class _QuranBookmarksPageState extends State<QuranBookmarksPage>
               text: l10n.quranBookmarksPages,
             ),
             Tab(
-              icon: const Icon(Icons.format_list_numbered_rtl_rounded, size: 20),
+              icon: const Icon(
+                Icons.format_list_numbered_rtl_rounded,
+                size: 20,
+              ),
               text: l10n.quranBookmarksAyahs,
             ),
           ],
@@ -133,7 +148,11 @@ class _QuranBookmarksPageState extends State<QuranBookmarksPage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline_rounded, size: 56, color: AppColors.error),
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 56,
+              color: AppColors.error,
+            ),
             const SizedBox(height: 12),
             Text(
               l10n.commonError(_error!),
@@ -182,15 +201,11 @@ class _QuranBookmarksPageState extends State<QuranBookmarksPage>
     }
 
     // 1. Sort Page Bookmarks: newest/last-used first (chrono descending)
-    final pageBookmarks = _bookmarks
-        .where((b) => b.isPageBookmark)
-        .toList()
+    final pageBookmarks = _bookmarks.where((b) => b.isPageBookmark).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     // 2. Sort Ayah Bookmarks: grouped by surah (asc), then by ayah number (asc)
-    final ayahBookmarks = _bookmarks
-        .where((b) => b.isAyahBookmark)
-        .toList()
+    final ayahBookmarks = _bookmarks.where((b) => b.isAyahBookmark).toList()
       ..sort((a, b) {
         final surahCompare = a.surahId.compareTo(b.surahId);
         if (surahCompare != 0) return surahCompare;
@@ -236,8 +251,8 @@ class _QuranBookmarksPageState extends State<QuranBookmarksPage>
                   padding: const EdgeInsets.all(16),
                   children: ayahGroups.entries.map((entry) {
                     final surahId = entry.key;
-                    final surahName = surahNames[surahId] ??
-                        l10n.quranSurahFallback(surahId);
+                    final surahName =
+                        surahNames[surahId] ?? l10n.quranSurahFallback(surahId);
                     final groupBookmarks = entry.value;
 
                     return Container(
@@ -254,9 +269,9 @@ class _QuranBookmarksPageState extends State<QuranBookmarksPage>
                         ),
                       ),
                       child: Theme(
-                        data: Theme.of(context).copyWith(
-                          dividerColor: Colors.transparent,
-                        ),
+                        data: Theme.of(
+                          context,
+                        ).copyWith(dividerColor: Colors.transparent),
                         child: ExpansionTile(
                           initiallyExpanded: true,
                           leading: Container(
@@ -362,7 +377,11 @@ class _BookmarkTile extends StatelessWidget {
           color: AppColors.error.withAlpha(220),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Icon(Icons.delete_sweep_rounded, color: Colors.white, size: 28),
+        child: const Icon(
+          Icons.delete_sweep_rounded,
+          color: Colors.white,
+          size: 28,
+        ),
       ),
       onDismissed: (_) => onDelete(),
       child: Card(
@@ -378,7 +397,10 @@ class _BookmarkTile extends StatelessWidget {
         ),
         elevation: 0,
         child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 8,
+          ),
           title: Text(
             subtitle,
             style: AppTextStyles.bodyMedium.copyWith(

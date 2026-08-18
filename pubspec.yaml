@@ -82,6 +82,7 @@ flutter:
 
   assets:
     - assets/quran.db
+    - assets/quran_warsh.db
     - assets/adhan.mp3
     - assets/adhan_alfajr.mp3
     - assets/adhan_short.mp3
@@ -104,3 +105,6 @@ flutter:
     - family: UthmanicHafs
       fonts:
         - asset: assets/fonts/uthmanic-hafs-v22.ttf
+    - family: UthmanicWarsh
+      fonts:
+        - asset: assets/fonts/uthmanic-warsh-v21.ttf

@@ -205,7 +205,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       }
 
       int initialPageNum = 1;
-      final lastPosition = await _bookmarkStorage.getLastPosition();
+      final lastPosition = await _bookmarkStorage.getLastPosition(
+        _activeRiwaya(),
+      );
 
       if (widget.page != null) {
         initialPageNum = widget.page!;
@@ -219,7 +221,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
         }
       } else if (widget.surahId != null) {
         debugPrint('[QuranReader] fetching ayahs for surah ${widget.surahId}');
-        final ayahs = await _cubit.getAyahsBySurah(widget.surahId!);
+        final ayahs = await _getAyahsBySurah(widget.surahId!);
         debugPrint(
           '[QuranReader] got ${ayahs.length} ayahs for surah ${widget.surahId}',
         );
@@ -240,7 +242,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
           );
         }
       } else if (widget.juzId != null) {
-        final ayahs = await _cubit.getAyahsByJuz(widget.juzId!);
+        final ayahs = await _getAyahsByJuz(widget.juzId!);
         if (ayahs.isNotEmpty) initialPageNum = ayahs.first.page;
       } else if (lastPosition != null) {
         initialPageNum = lastPosition.page;
@@ -288,6 +290,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     final surah = _getSurahEntity(surahId);
     try {
       await _bookmarkStorage.saveLastPosition(
+        riwaya: _activeRiwaya(),
         surahId: surahId,
         surahName: surah.nameEn,
         page: _currentPageNumber,
@@ -358,7 +361,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
 
   Future<void> _loadBookmarks() async {
     try {
-      final bookmarks = await _bookmarkStorage.loadBookmarks();
+      final bookmarks = await _bookmarkStorage.loadBookmarks(_activeRiwaya());
       if (mounted) setState(() => _bookmarks = bookmarks);
     } catch (e) {
       debugPrint('Error loading bookmarks: $e');
@@ -415,7 +418,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     final existing = _currentPageBookmark;
     if (existing != null) {
       try {
-        await _bookmarkStorage.removeBookmark(existing.id);
+        await _bookmarkStorage.removeBookmark(_activeRiwaya(), existing.id);
         await _loadBookmarks();
         if (!mounted) return;
         final l10n = AppLocalizations.of(context);
@@ -434,11 +437,12 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       }
     } else {
       try {
-        final verses = await _cubit.getAyahsByPage(pageNum);
+        final verses = await _getAyahsByPage(pageNum);
         if (verses.isNotEmpty) {
           final first = verses.first;
           final surah = _getSurahEntity(first.surahId);
           await _bookmarkStorage.addPageBookmark(
+            riwaya: _activeRiwaya(),
             surahId: first.surahId,
             surahName: surah.nameEn,
             page: pageNum,
@@ -478,7 +482,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     final existing = _getAyahBookmark(ayah.surahId, ayah.number);
     if (existing != null) {
       try {
-        await _bookmarkStorage.removeBookmark(existing.id);
+        await _bookmarkStorage.removeBookmark(_activeRiwaya(), existing.id);
         await _loadBookmarks();
         if (!mounted) return;
         final l10n = AppLocalizations.of(context);
@@ -502,6 +506,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       try {
         final surah = _getSurahEntity(ayah.surahId);
         await _bookmarkStorage.addAyahBookmark(
+          riwaya: _activeRiwaya(),
           surahId: ayah.surahId,
           surahName: surah.nameEn,
           page: ayah.page,
@@ -578,6 +583,55 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       return settingsState.settings.arabicFontSize;
     }
     return AppConstants.defaultArabicFontSize;
+  }
+
+  /// The active Quran riwaya from the app-wide settings. Read live (never
+  /// cached) so the reader reflects a riwaya change instantly.
+  QuranRiwaya _activeRiwaya() {
+    final settingsState = getIt<SettingsCubit>().state;
+    if (settingsState is SettingsLoadSuccess) {
+      return settingsState.settings.quranRiwaya;
+    }
+    return QuranRiwaya.hafsAnAsim;
+  }
+
+  bool get _isWarsh => _activeRiwaya() == QuranRiwaya.warsh;
+
+  /// Tajweed coloring applies to both riwayat; the analyzer detects the
+  /// Warsh orthography (ے / ٗ / ٞ / ٖ / اَ۬) directly from the text.
+  bool get _effectiveShowTajweed => _showTajweed;
+
+  Future<List<AyahEntity>> _getAyahsByPage(int page) =>
+      _isWarsh ? _cubit.getWarshAyahsByPage(page) : _cubit.getAyahsByPage(page);
+
+  Future<List<AyahEntity>> _getAyahsBySurah(int surahId) => _isWarsh
+      ? _cubit.getWarshAyahsBySurah(surahId)
+      : _cubit.getAyahsBySurah(surahId);
+
+  Future<List<AyahEntity>> _getAyahsByJuz(int juz) =>
+      _isWarsh ? _cubit.getWarshAyahsByJuz(juz) : _cubit.getAyahsByJuz(juz);
+
+  /// Switches the riwaya for the open reader and reloads the current page
+  /// from the new edition's data source (both are 604-page mushafs, so the
+  /// page number stays valid across the switch).
+  Future<void> _applyRiwaya(QuranRiwaya riwaya) async {
+    final settingsState = getIt<SettingsCubit>().state;
+    if (settingsState is! SettingsLoadSuccess) return;
+    if (settingsState.settings.quranRiwaya == riwaya) return;
+
+    await getIt<SettingsCubit>().setQuranRiwaya(riwaya);
+    if (!mounted) return;
+
+    setState(() {
+      _selectedAyah = null;
+      _canPersistPosition = false;
+      _portraitSettled = false;
+      _resumeScrollOffset = null;
+    });
+    _landscapeGeneration++;
+    _remountPortraitPager();
+    // Bookmarks are stored per riwaya — load the other edition's set.
+    await _loadBookmarks();
   }
 
   void _onPinchPointerDown(PointerDownEvent event) {
@@ -702,6 +756,34 @@ class _QuranReaderPageState extends State<QuranReaderPage>
                     onSelectionChanged: (selection) {
                       setModalState(() {});
                       _saveReaderMode(selection.first);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    l10n.quranRiwayaSectionTitle,
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: context.isDarkMode
+                          ? AppColors.onSurfaceDark
+                          : AppColors.onSurfaceLight,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SegmentedButton<QuranRiwaya>(
+                    segments: [
+                      ButtonSegment(
+                        value: QuranRiwaya.hafsAnAsim,
+                        label: Text(l10n.quranRiwayaHafsName),
+                      ),
+                      ButtonSegment(
+                        value: QuranRiwaya.warsh,
+                        label: Text(l10n.quranRiwayaWarshName),
+                      ),
+                    ],
+                    selected: {_activeRiwaya()},
+                    onSelectionChanged: (selection) {
+                      setModalState(() {});
+                      _applyRiwaya(selection.first);
                     },
                   ),
                   const SizedBox(height: 20),
@@ -1074,7 +1156,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
 
     // Immediately fetch metadata for the new page to update header
     try {
-      final ayahs = await _cubit.getAyahsByPage(pageNum);
+      final ayahs = await _getAyahsByPage(pageNum);
       if (ayahs.isNotEmpty && mounted) {
         setState(() {
           _activeSurahId = ayahs.first.surahId;
@@ -1110,12 +1192,13 @@ class _QuranReaderPageState extends State<QuranReaderPage>
             showTranslation: _showTranslation,
             translationLang: _translationLang,
             readerMode: _readerMode,
-            showTajweed: _showTajweed,
+            showTajweed: _effectiveShowTajweed,
             selectedAyah: _selectedAyah,
             allSurahs: _allSurahs,
             bookmarkedAyahKeys: _bookmarkedAyahKeys,
             fontFamily: quranFont.fontFamily,
             fontFamilyFallback: quranFont.fontFamilyFallback,
+            warsh: _isWarsh,
             targetAyahNumber:
                 (pageNum == widget.page || pageNum == _selectedAyah?.page)
                 ? widget.initialAyahId
@@ -1137,12 +1220,13 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       initialPage: _currentPageNumber,
       initialScrollOffset: _resumeScrollOffset,
       fontSize: _fontSize,
-      showTajweed: _showTajweed,
+      showTajweed: _effectiveShowTajweed,
       allSurahs: _allSurahs,
       selectedAyah: _selectedAyah,
       bookmarkedAyahKeys: _bookmarkedAyahKeys,
       fontFamily: quranFont.fontFamily,
       fontFamilyFallback: quranFont.fontFamilyFallback,
+      warsh: _isWarsh,
       onAyahTapped: _onAyahTapped,
       onPositionChanged: (surahId, juz, page, offset) {
         // Avoid setState when nothing meaningful changed — reduces rebuild jank
@@ -1183,14 +1267,12 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     });
   }
 
-  /// Resolves the user's selected Quran font from the settings cubit,
-  /// falling back to the default when settings haven't loaded yet.
+  /// Resolves the Quran font for the active riwaya. The font is derived,
+  /// not user-selectable: each riwaya always renders in the Uthmani font
+  /// that matches its orthography (Hafs → UthmanicHafs, Warsh →
+  /// UthmanicWarsh).
   QuranFont _activeQuranFont() {
-    final settingsState = getIt<SettingsCubit>().state;
-    if (settingsState is SettingsLoadSuccess) {
-      return settingsState.settings.quranFont;
-    }
-    return QuranFont.uthmanic;
+    return quranFontForRiwaya(_activeRiwaya());
   }
 
   @override

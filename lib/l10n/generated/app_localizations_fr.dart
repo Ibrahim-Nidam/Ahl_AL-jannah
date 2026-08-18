@@ -109,6 +109,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get quranFontUthmanicHafsName => 'Uthmani Hafs (V22)';
 
   @override
+  String get quranFontUthmanicWarshName => 'Uthmani Warsh (V21)';
+
+  @override
+  String get quranRiwayaSectionTitle => 'Récitation du Coran';
+
+  @override
+  String get quranRiwayaSectionDescription =>
+      'Choisissez la récitation (riwaya) utilisée par le lecteur du Coran. Warsh utilise son propre texte et sa propre police.';
+
+  @override
+  String get quranRiwayaHafsName => 'Hafs d\'Asim';
+
+  @override
+  String get quranRiwayaWarshName => 'Warsh de Nafi\'';
+
+  @override
   String get arabicFontSizeSectionTitle => 'Taille de la police arabe';
 
   @override
@@ -197,6 +213,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get commonClear => 'Effacer';
+
+  @override
+  String get commonDone => 'Terminé';
+
+  @override
+  String get commonClose => 'Fermer';
 
   @override
   String get startupPermissionsTitle =>

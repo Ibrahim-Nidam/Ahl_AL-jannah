@@ -33,7 +33,11 @@ class QuranInlineSurahHeader extends StatelessWidget {
     required this.surah,
     required this.accent,
     this.fontFamily = 'Lateef',
-    this.fontFamilyFallback = const ['Noto Naskh Arabic', 'Scheherazade New', 'Arial'],
+    this.fontFamilyFallback = const [
+      'Noto Naskh Arabic',
+      'Scheherazade New',
+      'Arial',
+    ],
   });
 
   @override
@@ -54,7 +58,10 @@ class QuranInlineSurahHeader extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             '${surah.nameEn} • ${quranRevelationLabel(l10n, surah.revelation)}',
-            style: AppTextStyles.caption.copyWith(color: accent, letterSpacing: 1),
+            style: AppTextStyles.caption.copyWith(
+              color: accent,
+              letterSpacing: 1,
+            ),
           ),
           const SizedBox(height: 8),
           Container(height: 1, width: 60, color: accent.withAlpha(150)),
@@ -64,16 +71,38 @@ class QuranInlineSurahHeader extends StatelessWidget {
   }
 }
 
+/// Hafs-style basmala. Uses the alef wasla (ٱ, U+0671) exactly as the
+/// Hafs mushaf does.
+const String _basmalaHafs =
+    'بِسْمِ \u0671للَّهِ \u0671لرَّحْمَٰنِ \u0671لرَّحِيمِ';
+
+/// Warsh-style basmala. The Uthmanic Warsh font ships no glyph for the
+/// alef wasla (U+0671), so rendering the Hafs basmala in it falls back to
+/// a heavier system font (Noto Naskh) — those alefs look "bold". Warsh
+/// orthography writes hamzat al-wasl as a plain alef (ا, U+0627), which
+/// the font does cover, so Warsh uses this variant.
+const String _basmalaWarsh =
+    'بِسْمِ \u0627للَّهِ \u0627لرَّحْمَٰنِ \u0627لرَّحِيمِ';
+
 class QuranInlineBismillah extends StatelessWidget {
   final Color color;
   final String fontFamily;
   final List<String> fontFamilyFallback;
 
+  /// When true, renders the Warsh basmala (plain alef) which the
+  /// Uthmanic Warsh font can display without glyph fallback.
+  final bool warsh;
+
   const QuranInlineBismillah({
     super.key,
     required this.color,
     this.fontFamily = 'Lateef',
-    this.fontFamilyFallback = const ['Noto Naskh Arabic', 'Scheherazade New', 'Arial'],
+    this.fontFamilyFallback = const [
+      'Noto Naskh Arabic',
+      'Scheherazade New',
+      'Arial',
+    ],
+    this.warsh = false,
   });
 
   @override
@@ -81,7 +110,7 @@ class QuranInlineBismillah extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Text(
-        'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ',
+        warsh ? _basmalaWarsh : _basmalaHafs,
         style: AppTextStyles.arabicQuran(
           fontSize: 30,
           fontFamily: fontFamily,
