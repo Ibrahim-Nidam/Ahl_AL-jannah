@@ -4,6 +4,7 @@ import 'package:workmanager/workmanager.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../settings/domain/usecases/settings_usecases.dart';
+import '../../domain/entities/prayer_entities.dart';
 import '../../domain/usecases/prayer_usecases.dart';
 import 'prayer_notification_service.dart';
 
@@ -38,58 +39,75 @@ void prayerCallbackDispatcher() {
 
       AppLogger.info("Location: ${location.cityName}, Notifications enabled: ${prayerSettings.notificationsEnabled}");
 
-      // 3. Calculate today + tomorrow so past prayers fall through to
-      //    tomorrow's times (covers overnight Fajr without waiting for
-      //    the next Workmanager tick).
+      // 3. Calculate today + 6 days ahead so notifications are pre-scheduled
+      //    in AlarmManager. This provides a buffer against delayed Workmanager
+      //    resync tasks — even if the daily periodic job is late by hours,
+      //    the exact-alarm notifications for the next week are already sitting
+      //    in AlarmManager.
       final now = DateTime.now();
-      AppLogger.debug("Calculating prayer times for $now");
-      
-      final todayTimes = await calculateTimes(
-        location: location,
-        date: now,
-        settings: prayerSettings,
-      );
-      final nextDayTimes = await calculateTimes(
-        location: location,
-        date: DateTime(now.year, now.month, now.day).add(const Duration(days: 1)),
-        settings: prayerSettings,
-      );
+      final todayStart = DateTime(now.year, now.month, now.day);
+      AppLogger.debug("Calculating prayer times for $now + 6 days ahead");
 
-      AppLogger.info("Today's prayer times: Fajr: ${todayTimes.fajr}, Dhuhr: ${todayTimes.dhuhr}, Asr: ${todayTimes.asr}, Maghrib: ${todayTimes.maghrib}, Isha: ${todayTimes.isha}");
+      final daysData = <(DateTime, PrayerTimeEntity)>[];
+      for (int dayOffset = 0; dayOffset < 7; dayOffset++) {
+        final date = todayStart.add(Duration(days: dayOffset));
+        try {
+          final times = await calculateTimes(
+            location: location,
+            date: date,
+            settings: prayerSettings,
+          );
+          daysData.add((date, times));
+          AppLogger.debug("Day $dayOffset ($date): Fajr=${times.fajr}, Dhuhr=${times.dhuhr}, Asr=${times.asr}, Maghrib=${times.maghrib}, Isha=${times.isha}");
+        } catch (e) {
+          AppLogger.warning("Failed to calculate times for day $dayOffset ($date): $e");
+        }
+      }
 
-      // 4. Schedule prayer/adhan notifications, then Adhkar reminders.
-      //    Adhkar scheduling must come after prayer scheduling — the
-      //    latter does a full `cancelAllNotifications()` first, which
-      //    would otherwise wipe out freshly-scheduled Adhkar reminders.
+      if (daysData.isEmpty) {
+        AppLogger.error("No prayer times calculated for any day — cannot schedule");
+        return false;
+      }
+
+      // 4. Schedule prayer/adhan notifications for all 7 days, then
+      //    Adhkar reminders. The multi-day approach means even if the next
+      //    Workmanager resync is delayed, alarms for the coming week are
+      //    already in AlarmManager.
       AppLogger.debug("Initializing notification service");
       await notificationService.initialize();
-      
-      AppLogger.debug("Scheduling prayer notifications");
-      await notificationService.schedulePrayerNotifications(
-        todayTimes,
+
+      AppLogger.debug("Scheduling multi-day prayer notifications (${daysData.length} days)");
+      await notificationService.scheduleMultiDayNotifications(
+        daysData,
         prayerSettings,
         appSettings.adhanType,
         language: appSettings.language,
-        nextDayTimes: nextDayTimes,
       );
-      
+
+      // Adhkar reminders use only today + tomorrow (fixed IDs 2001/2002).
+      final todayTimes = daysData.first.$2;
+      final tomorrowTimes = daysData.length > 1 ? daysData[1].$2 : null;
       AppLogger.debug("Scheduling Adhkar reminders");
       await notificationService.scheduleAdhkarReminders(
         todayTimes,
         morningEnabled: appSettings.morningAdhkarReminderEnabled,
         eveningEnabled: appSettings.eveningAdhkarReminderEnabled,
         language: appSettings.language,
-        nextDayTimes: nextDayTimes,
+        nextDayTimes: tomorrowTimes,
       );
 
       // Schedule a best-effort rollover task a few minutes after tomorrow's
       // Fajr, so the schedule deterministically advances to the next day
       // even if the OS delays the daily periodic task. This is purely a
-      // safety net — the exact-alarm notifications themselves already cover
-      // today + tomorrow and survive app kill / reboot.
+      // safety net — the 7-day exact-alarm notifications already cover
+      // the coming week.
       try {
         final now = DateTime.now();
-        var rolloverDelay = nextDayTimes.fajr.difference(now) + const Duration(minutes: 3);
+        // Use tomorrow's Fajr from the pre-computed daysData
+        final tomorrowFajr = daysData.length > 1
+            ? daysData[1].$2.fajr
+            : daysData[0].$2.fajr.add(const Duration(days: 1));
+        var rolloverDelay = tomorrowFajr.difference(now) + const Duration(minutes: 3);
         if (rolloverDelay < const Duration(minutes: 2)) {
           rolloverDelay = const Duration(minutes: 2);
         }
@@ -137,13 +155,10 @@ class PrayerBackgroundExecutor {
   /// Registers the daily safety-net task that re-establishes the prayer
   /// notifications.
   ///
-  /// Intentionally DAILY (not every 15 minutes). Exact-alarm notifications
-  /// are scheduled ~24h ahead, persist across app kill and reboot (via the
-  /// boot receiver), and are re-scheduled on every app open — so a daily
-  /// periodic re-check is all that is needed to recover from any lost
-  /// alarms. Scheduling every 15 minutes instead cancels and re-creates
-  /// every exact alarm constantly, which triggers Android's exact-alarm
-  /// throttling and is a primary cause of alerts firing LATE.
+  /// Uses `ExistingPeriodicWorkPolicy.keep` so an already-registered task
+  /// is not replaced (which would cancel any pending execution). The task
+  /// only gets a fresh registration on first install or after a Workmanager
+  /// schema change.
   static Future<void> scheduleDailyAdhanTask() async {
     AppLogger.info('PrayerBackgroundExecutor.scheduleDailyAdhanTask called');
     try {
@@ -152,7 +167,7 @@ class PrayerBackgroundExecutor {
         "dailyAdhanRescheduleTask",
         frequency: const Duration(hours: 24),
         initialDelay: const Duration(minutes: 1),
-        existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
+        existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
         constraints: Constraints(
           requiresBatteryNotLow: false,
           requiresCharging: false,
