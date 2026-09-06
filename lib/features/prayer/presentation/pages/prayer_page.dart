@@ -12,6 +12,7 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../settings/domain/entities/settings_entities.dart';
 import '../../../settings/presentation/bloc/settings_cubit.dart';
@@ -89,7 +90,26 @@ class _PrayerPageState extends State<PrayerPage>
       // background isolate where this app's audio player can't be reached, so
       // re-check the persisted stop when the app comes back to the foreground.
       _applyPersistedManualStop();
+      // Re-verify exact alarm permission and reschedule if it was revoked.
+      _checkExactAlarmsAndReschedule();
     }
+  }
+
+  /// Checks whether exact alarms are still permitted. If the user revoked
+  /// the permission while the app was backgrounded, reschedule immediately
+  /// so the next notification gets the correct schedule mode (exact vs inexact).
+  Future<void> _checkExactAlarmsAndReschedule() async {
+    try {
+      final notificationService = getIt<PrayerNotificationService>();
+      final canExact = await notificationService.canScheduleExactAlarms();
+      if (!canExact) {
+        // Reschedule so the schedule mode picks up the current permission state.
+        // This won't fix the missing permission, but ensures we at least use
+        // inexact mode consistently rather than a stale cached value.
+        AppLogger.info('[PrayerPage] Exact alarm permission revoked — rescheduling with current mode');
+        _cubit.loadPrayerTimes(forceRefresh: false);
+      }
+    } catch (_) {}
   }
 
   /// Loads the persisted manual-stop state. If an adhan is currently playing
