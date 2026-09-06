@@ -29,6 +29,7 @@ import '../../../../l10n/generated/app_localizations.dart';
 import '../../../settings/domain/entities/settings_entities.dart';
 import '../../domain/entities/prayer_entities.dart';
 import 'adhan_audio_player.dart';
+import 'scheduling_lock.dart';
 
 /// Action identifiers used by the reminder / adhan notification buttons.
 const String _actionCancelAdhan = 'cancel_adhan';
@@ -76,20 +77,27 @@ enum AdhkarReminderKind { morning, evening }
 class PrayerNotificationIds {
   const PrayerNotificationIds._();
 
-  static int _baseFor(String prayerKey) {
+  /// Number of IDs reserved per day. Each prayer uses 10 slots, and there
+  /// are 6 prayer keys, so 60 IDs per day. We reserve 100 for headroom.
+  static const int _dayStride = 100;
+
+  static int _baseFor(String prayerKey, {int dayOffset = 0}) {
     final index = _allPrayerKeys.indexOf(prayerKey);
     assert(index != -1, 'Unknown prayer key: $prayerKey');
-    return 1000 + (index * 10);
+    return 1000 + (dayOffset * _dayStride) + (index * 10);
   }
 
   /// The "N minutes before" reminder notification id.
-  static int reminderId(String prayerKey) => _baseFor(prayerKey) + 1;
+  static int reminderId(String prayerKey, {int dayOffset = 0}) =>
+      _baseFor(prayerKey, dayOffset: dayOffset) + 1;
 
   /// The sound-producing "It's time for X" Adhan notification id.
-  static int adhanId(String prayerKey) => _baseFor(prayerKey) + 2;
+  static int adhanId(String prayerKey, {int dayOffset = 0}) =>
+      _baseFor(prayerKey, dayOffset: dayOffset) + 2;
 
   /// The ongoing "Adhan is playing — Stop Adhan" banner notification id.
-  static int stopBannerId(String prayerKey) => _baseFor(prayerKey) + 3;
+  static int stopBannerId(String prayerKey, {int dayOffset = 0}) =>
+      _baseFor(prayerKey, dayOffset: dayOffset) + 3;
 
   /// IDs for the two Adhkar reminders — a separate, non-overlapping
   /// range (2001/2002) so they can never collide with the prayer IDs
@@ -101,6 +109,18 @@ class PrayerNotificationIds {
       case AdhkarReminderKind.evening:
         return 2002;
     }
+  }
+
+  /// Returns all notification IDs for a given day offset, useful for
+  /// bulk cancellation.
+  static List<int> allIdsForDay({int dayOffset = 0}) {
+    final ids = <int>[];
+    for (final key in _allPrayerKeys) {
+      ids.add(reminderId(key, dayOffset: dayOffset));
+      ids.add(adhanId(key, dayOffset: dayOffset));
+      ids.add(stopBannerId(key, dayOffset: dayOffset));
+    }
+    return ids;
   }
 
   /// The prayer key whose Adhan window is currently active (i.e. would
@@ -170,7 +190,18 @@ Future<void> _onForegroundNotificationResponse(NotificationResponse response) as
     return;
   }
   // Plain tap on the notification body.
-  _navigateForPayload(response.payload);
+  // If this is an adhan notification and the app is in foreground,
+  // cancel the notification immediately to stop its built-in sound,
+  // then let the Prayer page's adhan banner handle audio via audioplayers.
+  // This prevents double-audio (notification sound + audioplayers).
+  final payload = response.payload;
+  if (payload != null && _adhanPrayerKeys.contains(payload)) {
+    try {
+      final plugin = FlutterLocalNotificationsPlugin();
+      await plugin.cancel(PrayerNotificationIds.adhanId(payload));
+    } catch (_) {}
+  }
+  _navigateForPayload(payload);
 }
 
 /// Handles notification action-button taps while the app process is fully
@@ -347,12 +378,29 @@ class PrayerNotificationService {
   }
 
   /// Cancels all scheduled prayer alerts. Called before every reschedule
-  /// so notifications never get duplicated.
+  /// so notifications never get duplicated. Clears IDs for all scheduled
+  /// days (today + up to 6 days ahead).
   Future<void> cancelAllNotifications() async {
     try {
       await _notificationsPlugin.cancelAll();
     } catch (e, st) {
       debugPrint('cancelAllNotifications failed: $e\n$st');
+    }
+  }
+
+  /// Cancels all prayer notification IDs for days 1..6 ahead (keeps day 0
+  /// / today intact). Used when we want to re-schedule the multi-day
+  /// buffer without wiping today's already-active alarms.
+  Future<void> cancelFutureDayNotifications() async {
+    try {
+      for (int day = 1; day <= 6; day++) {
+        for (final id in PrayerNotificationIds.allIdsForDay(dayOffset: day)) {
+          await _notificationsPlugin.cancel(id);
+        }
+      }
+      AppLogger.info('Cancelled future-day (1-6) notification IDs');
+    } catch (e, st) {
+      AppLogger.error('cancelFutureDayNotifications failed', error: e, stackTrace: st);
     }
   }
 
@@ -407,97 +455,225 @@ class PrayerNotificationService {
     PrayerTimeEntity? nextDayTimes,
   }) async {
     AppLogger.info('schedulePrayerNotifications called (sound=${settings.adhanSoundEnabled})');
-    await initialize();
 
-    // Keep stale prayer alarms from firing after the user turns
-    // notifications off. Callers that still need Adhkar should
-    // reschedule them after this returns.
-    if (!settings.notificationsEnabled) {
-      AppLogger.info('Notifications disabled, canceling all');
-      await cancelAllNotifications();
+    // Acquire cross-isolate lock to prevent concurrent scheduling from
+    // main isolate + Workmanager isolate interleaving cancel/reschedule.
+    final locked = await SchedulingLock.acquire();
+    if (!locked) {
+      AppLogger.warning('Could not acquire scheduling lock — skipping to avoid race condition');
       return;
     }
 
-    final l10n = lookupAppLocalizations(_resolveNotificationLocale(language));
-    
-    // Check if there's an active adhan currently playing to avoid canceling it
-    final activePrayerKey = PrayerNotificationIds.activePrayerKey(prayerTimes, settings);
-    AppLogger.debug('Active prayer key: $activePrayerKey');
-    
-    if (activePrayerKey != null) {
-      AppLogger.info('Adhan active for $activePrayerKey - preserving it');
-      await _cancelAllNotificationsExcept(activePrayerKey);
-    } else {
-      await cancelAllNotifications();
-    }
+    try {
+      await initialize();
 
-    final scheduleMode = await _resolveAndroidScheduleMode();
-    AppLogger.debug('Android schedule mode: $scheduleMode');
+      // Keep stale prayer alarms from firing after the user turns
+      // notifications off. Callers that still need Adhkar should
+      // reschedule them after this returns.
+      if (!settings.notificationsEnabled) {
+        AppLogger.info('Notifications disabled, canceling all');
+        await cancelAllNotifications();
+        return;
+      }
 
-    final todayTimes = <String, DateTime>{
-      'fajr': prayerTimes.fajr,
-      'sunrise': prayerTimes.sunrise,
-      'dhuhr': prayerTimes.dhuhr,
-      'asr': prayerTimes.asr,
-      'maghrib': prayerTimes.maghrib,
-      'isha': prayerTimes.isha,
-    };
-    final tomorrowTimes = nextDayTimes == null
-        ? null
-        : <String, DateTime>{
-            'fajr': nextDayTimes.fajr,
-            'sunrise': nextDayTimes.sunrise,
-            'dhuhr': nextDayTimes.dhuhr,
-            'asr': nextDayTimes.asr,
-            'maghrib': nextDayTimes.maghrib,
-            'isha': nextDayTimes.isha,
-          };
+      final l10n = lookupAppLocalizations(_resolveNotificationLocale(language));
 
-    final now = DateTime.now();
-    int scheduledCount = 0;
+      // Check if there's an active adhan currently playing to avoid canceling it
+      final activePrayerKey = PrayerNotificationIds.activePrayerKey(prayerTimes, settings);
+      AppLogger.debug('Active prayer key: $activePrayerKey');
 
-    for (final key in _allPrayerKeys) {
-      if (settings.mutedPrayers.contains(key)) continue;
-      final time = _resolveUpcomingTime(
-        today: todayTimes[key]!,
-        tomorrow: tomorrowTimes?[key],
-        now: now,
-      );
-      final title = _displayName(l10n, key);
-      // Per-prayer sound: the global adhan-sound switch minus prayers the
-      // user has individually silenced (settings.silentPrayers).
-      final playSound = settings.prayerHasSound(key);
+      if (activePrayerKey != null) {
+        AppLogger.info('Adhan active for $activePrayerKey - preserving it');
+        await _cancelAllNotificationsExcept(activePrayerKey);
+      } else {
+        await cancelAllNotifications();
+      }
 
-      await _scheduleReminder(
-        l10n: l10n,
-        prayerKey: key,
-        title: title,
-        prayerTime: time,
-        now: now,
-        reminderMinutes: settings.reminderInterval,
-        scheduleMode: scheduleMode,
-        playSound: playSound,
-      );
+      final scheduleMode = await _resolveAndroidScheduleMode();
+      AppLogger.debug('Android schedule mode: $scheduleMode');
 
-      // Don't reschedule the adhan for the currently active prayer —
-      // it is already showing and playing. Calling _scheduleAdhan with
-      // tomorrow's time + the same notification ID would cancel the
-      // currently-showing notification and kill its sound immediately.
-      if (_adhanPrayerKeys.contains(key) && key != activePrayerKey) {
-        await _scheduleAdhan(
+      final todayTimes = <String, DateTime>{
+        'fajr': prayerTimes.fajr,
+        'sunrise': prayerTimes.sunrise,
+        'dhuhr': prayerTimes.dhuhr,
+        'asr': prayerTimes.asr,
+        'maghrib': prayerTimes.maghrib,
+        'isha': prayerTimes.isha,
+      };
+      final tomorrowTimes = nextDayTimes == null
+          ? null
+          : <String, DateTime>{
+              'fajr': nextDayTimes.fajr,
+              'sunrise': nextDayTimes.sunrise,
+              'dhuhr': nextDayTimes.dhuhr,
+              'asr': nextDayTimes.asr,
+              'maghrib': nextDayTimes.maghrib,
+              'isha': nextDayTimes.isha,
+            };
+
+      final now = DateTime.now();
+      int scheduledCount = 0;
+
+      for (final key in _allPrayerKeys) {
+        if (settings.mutedPrayers.contains(key)) continue;
+        final time = _resolveUpcomingTime(
+          today: todayTimes[key]!,
+          tomorrow: tomorrowTimes?[key],
+          now: now,
+        );
+        final title = _displayName(l10n, key);
+        // Per-prayer sound: the global adhan-sound switch minus prayers the
+        // user has individually silenced (settings.silentPrayers).
+        final playSound = settings.prayerHasSound(key);
+
+        await _scheduleReminder(
           l10n: l10n,
           prayerKey: key,
           title: title,
           prayerTime: time,
           now: now,
-          adhanType: adhanType,
+          reminderMinutes: settings.reminderInterval,
           scheduleMode: scheduleMode,
           playSound: playSound,
         );
-        scheduledCount++;
+
+        // Don't reschedule the adhan for the currently active prayer —
+        // it is already showing and playing. Calling _scheduleAdhan with
+        // tomorrow's time + the same notification ID would cancel the
+        // currently-showing notification and kill its sound immediately.
+        if (_adhanPrayerKeys.contains(key) && key != activePrayerKey) {
+          await _scheduleAdhan(
+            l10n: l10n,
+            prayerKey: key,
+            title: title,
+            prayerTime: time,
+            now: now,
+            adhanType: adhanType,
+            scheduleMode: scheduleMode,
+            playSound: playSound,
+          );
+          scheduledCount++;
+        }
       }
+      AppLogger.info('Scheduled $scheduledCount adhan notifications (sound=${settings.adhanSoundEnabled})');
+    } finally {
+      await SchedulingLock.release();
     }
-    AppLogger.info('Scheduled $scheduledCount adhan notifications (sound=${settings.adhanSoundEnabled})');
+  }
+
+  /// Schedules prayer notifications for multiple days ahead.
+  ///
+  /// [days] is a list of (date, PrayerTimeEntity) pairs, where each entry
+  /// represents one day to schedule. Day 0 is always today. This method
+  /// uses day-offset notification IDs so up to 7 days of alarms can sit
+  /// in AlarmManager simultaneously, providing a buffer against delayed
+  /// Workmanager resync tasks.
+  ///
+  /// Only future prayer times within each day are scheduled; past times
+  /// for today are skipped (but future days schedule all prayers).
+  Future<void> scheduleMultiDayNotifications(
+    List<(DateTime date, PrayerTimeEntity times)> days,
+    PrayerTimesSettings settings,
+    AdhanType adhanType, {
+    required AppLanguage language,
+  }) async {
+    AppLogger.info('scheduleMultiDayNotifications called for ${days.length} days');
+
+    final locked = await SchedulingLock.acquire();
+    if (!locked) {
+      AppLogger.warning('Could not acquire scheduling lock for multi-day scheduling');
+      return;
+    }
+
+    try {
+      await initialize();
+
+      if (!settings.notificationsEnabled) {
+        AppLogger.info('Notifications disabled, canceling all');
+        await cancelAllNotifications();
+        return;
+      }
+
+      final l10n = lookupAppLocalizations(_resolveNotificationLocale(language));
+      final now = DateTime.now();
+      final scheduleMode = await _resolveAndroidScheduleMode();
+
+      // Check if there's an active adhan currently playing on day 0
+      // to avoid canceling it.
+      String? activePrayerKey;
+      if (days.isNotEmpty) {
+        activePrayerKey = PrayerNotificationIds.activePrayerKey(
+          days[0].$2,
+          settings,
+        );
+      }
+
+      if (activePrayerKey != null) {
+        AppLogger.info('Adhan active for $activePrayerKey on day 0 - preserving it');
+        await _cancelAllNotificationsExcept(activePrayerKey);
+      } else {
+        await cancelAllNotifications();
+      }
+
+      int totalScheduled = 0;
+
+      for (int dayOffset = 0; dayOffset < days.length; dayOffset++) {
+        final (date, prayerTimes) = days[dayOffset];
+        final dayTimes = <String, DateTime>{
+          'fajr': prayerTimes.fajr,
+          'sunrise': prayerTimes.sunrise,
+          'dhuhr': prayerTimes.dhuhr,
+          'asr': prayerTimes.asr,
+          'maghrib': prayerTimes.maghrib,
+          'isha': prayerTimes.isha,
+        };
+
+        for (final key in _allPrayerKeys) {
+          if (settings.mutedPrayers.contains(key)) continue;
+          final prayerTime = dayTimes[key]!;
+
+          // For today (dayOffset 0), skip past times. For future days,
+          // schedule all prayers since they're all in the future.
+          if (dayOffset == 0 && !prayerTime.isAfter(now)) continue;
+
+          final title = _displayName(l10n, key);
+          final playSound = settings.prayerHasSound(key);
+
+          // Don't reschedule the adhan for the currently active prayer on day 0.
+          final skipAdhan = dayOffset == 0 && key == activePrayerKey;
+
+          await _scheduleReminder(
+            l10n: l10n,
+            prayerKey: key,
+            title: title,
+            prayerTime: prayerTime,
+            now: now,
+            reminderMinutes: settings.reminderInterval,
+            scheduleMode: scheduleMode,
+            playSound: playSound,
+            dayOffset: dayOffset,
+          );
+
+          if (_adhanPrayerKeys.contains(key) && !skipAdhan) {
+            await _scheduleAdhan(
+              l10n: l10n,
+              prayerKey: key,
+              title: title,
+              prayerTime: prayerTime,
+              now: now,
+              adhanType: adhanType,
+              scheduleMode: scheduleMode,
+              playSound: playSound,
+              dayOffset: dayOffset,
+            );
+            totalScheduled++;
+          }
+        }
+      }
+      AppLogger.info('Multi-day: scheduled $totalScheduled adhan notifications across ${days.length} days');
+    } finally {
+      await SchedulingLock.release();
+    }
   }
 
   /// Schedules the Morning (Fajr + 1h) and Evening (Asr + 1h) Adhkar
@@ -518,47 +694,58 @@ class PrayerNotificationService {
     required AppLanguage language,
     PrayerTimeEntity? nextDayTimes,
   }) async {
-    await initialize();
+    // Acquire lock to prevent interleaving with prayer notification scheduling.
+    final locked = await SchedulingLock.acquire();
+    if (!locked) {
+      AppLogger.warning('Could not acquire scheduling lock for Adhkar reminders');
+      return;
+    }
 
-    final locale = _resolveNotificationLocale(language);
-    final l10n = lookupAppLocalizations(locale);
-    final now = DateTime.now();
-    final scheduleMode = await _resolveAndroidScheduleMode();
+    try {
+      await initialize();
 
-    final morningTime = _resolveUpcomingTime(
-      today: todayTimes.fajr.add(const Duration(hours: 1)),
-      tomorrow: nextDayTimes?.fajr.add(const Duration(hours: 1)),
-      now: now,
-    );
-    final eveningTime = _resolveUpcomingTime(
-      today: todayTimes.asr.add(const Duration(hours: 1)),
-      tomorrow: nextDayTimes?.asr.add(const Duration(hours: 1)),
-      now: now,
-    );
+      final locale = _resolveNotificationLocale(language);
+      final l10n = lookupAppLocalizations(locale);
+      final now = DateTime.now();
+      final scheduleMode = await _resolveAndroidScheduleMode();
 
-    await _scheduleOrCancelAdhkarReminder(
-      kind: AdhkarReminderKind.morning,
-      enabled: morningEnabled,
-      reminderTime: morningTime,
-      now: now,
-      title: l10n.morningAdhkarNotificationTitle,
-      body: l10n.morningAdhkarNotificationBody,
-      payload: _payloadMorningAdhkar,
-      scheduleMode: scheduleMode,
-      l10n: l10n,
-    );
+      final morningTime = _resolveUpcomingTime(
+        today: todayTimes.fajr.add(const Duration(hours: 1)),
+        tomorrow: nextDayTimes?.fajr.add(const Duration(hours: 1)),
+        now: now,
+      );
+      final eveningTime = _resolveUpcomingTime(
+        today: todayTimes.asr.add(const Duration(hours: 1)),
+        tomorrow: nextDayTimes?.asr.add(const Duration(hours: 1)),
+        now: now,
+      );
 
-    await _scheduleOrCancelAdhkarReminder(
-      kind: AdhkarReminderKind.evening,
-      enabled: eveningEnabled,
-      reminderTime: eveningTime,
-      now: now,
-      title: l10n.eveningAdhkarNotificationTitle,
-      body: l10n.eveningAdhkarNotificationBody,
-      payload: _payloadEveningAdhkar,
-      scheduleMode: scheduleMode,
-      l10n: l10n,
-    );
+      await _scheduleOrCancelAdhkarReminder(
+        kind: AdhkarReminderKind.morning,
+        enabled: morningEnabled,
+        reminderTime: morningTime,
+        now: now,
+        title: l10n.morningAdhkarNotificationTitle,
+        body: l10n.morningAdhkarNotificationBody,
+        payload: _payloadMorningAdhkar,
+        scheduleMode: scheduleMode,
+        l10n: l10n,
+      );
+
+      await _scheduleOrCancelAdhkarReminder(
+        kind: AdhkarReminderKind.evening,
+        enabled: eveningEnabled,
+        reminderTime: eveningTime,
+        now: now,
+        title: l10n.eveningAdhkarNotificationTitle,
+        body: l10n.eveningAdhkarNotificationBody,
+        payload: _payloadEveningAdhkar,
+        scheduleMode: scheduleMode,
+        l10n: l10n,
+      );
+    } finally {
+      await SchedulingLock.release();
+    }
   }
 
   /// Cancels a single Adhkar reminder immediately — used when a toggle is
@@ -741,6 +928,7 @@ class PrayerNotificationService {
     required int reminderMinutes,
     required AndroidScheduleMode scheduleMode,
     required bool playSound,
+    int dayOffset = 0,
   }) async {
     final reminderTime = prayerTime.subtract(Duration(minutes: reminderMinutes));
     if (!reminderTime.isAfter(now)) return;
@@ -773,7 +961,7 @@ class PrayerNotificationService {
 
     try {
       await _notificationsPlugin.zonedSchedule(
-        PrayerNotificationIds.reminderId(prayerKey),
+        PrayerNotificationIds.reminderId(prayerKey, dayOffset: dayOffset),
         reminderText,
         reminderText,
         tz.TZDateTime.from(reminderTime, tz.local),
@@ -797,6 +985,7 @@ class PrayerNotificationService {
     required AdhanType adhanType,
     required AndroidScheduleMode scheduleMode,
     required bool playSound,
+    int dayOffset = 0,
   }) async {
     AppLogger.debug('_scheduleAdhan: $prayerKey ($title) at $prayerTime');
     if (!prayerTime.isAfter(now)) {
@@ -857,7 +1046,7 @@ class PrayerNotificationService {
     try {
       final tzTime = tz.TZDateTime.from(prayerTime, tz.local);
       await _notificationsPlugin.zonedSchedule(
-        PrayerNotificationIds.adhanId(prayerKey),
+        PrayerNotificationIds.adhanId(prayerKey, dayOffset: dayOffset),
         l10n.prayerAdhanNotificationTitle(title),
         l10n.prayerAdhanNotificationBody(title),
         tzTime,
@@ -945,6 +1134,68 @@ class PrayerNotificationService {
       debugPrint('[NOTIFICATION] Failed to check exact-alarm permission: $e');
       return AndroidScheduleMode.inexactAllowWhileIdle;
     }
+  }
+
+  /// Diagnostic: dumps all currently pending notifications.
+  ///
+  /// Returns a list of maps, each containing the notification id, title,
+  /// body, and scheduled date. Useful for verifying that alarms actually
+  /// made it into AlarmManager after each scheduling call.
+  Future<List<Map<String, dynamic>>> dumpPendingNotifications() async {
+    await initialize();
+    try {
+      final pending = await _notificationsPlugin.pendingNotificationRequests();
+      return pending.map((req) => {
+        'id': req.id,
+        'title': req.title,
+        'body': req.body,
+        'payload': req.payload,
+      }).toList();
+    } catch (e) {
+      AppLogger.error('Failed to dump pending notifications', error: e);
+      return [];
+    }
+  }
+
+  /// Diagnostic: returns a summary of scheduled notifications grouped by
+  /// day offset, with counts per prayer key. Logs the summary and returns
+  /// the raw pending list for programmatic inspection.
+  Future<String> diagnosticSummary() async {
+    final pending = await dumpPendingNotifications();
+    final buffer = StringBuffer();
+    buffer.writeln('=== Notification Diagnostics ===');
+    buffer.writeln('Total pending: ${pending.length}');
+    buffer.writeln('Exact alarms permitted: ${await canScheduleExactAlarms()}');
+    buffer.writeln();
+
+    // Group by day offset (derived from ID ranges)
+    final byDay = <int, List<Map<String, dynamic>>>{};
+    for (final notif in pending) {
+      final id = notif['id'] as int;
+      if (id >= 1000) {
+        final dayOffset = (id - 1000) ~/ 100;
+        byDay.putIfAbsent(dayOffset, () => []).add(notif);
+      }
+    }
+
+    for (final entry in byDay.entries.toList()..sort((a, b) => a.key.compareTo(b.key))) {
+      buffer.writeln('Day +${entry.key}: ${entry.value.length} notifications');
+      for (final notif in entry.value) {
+        buffer.writeln('  ID ${notif['id']}: ${notif['title']}');
+      }
+    }
+
+    final adhkarPending = pending.where((n) => n['id'] == 2001 || n['id'] == 2002).toList();
+    if (adhkarPending.isNotEmpty) {
+      buffer.writeln('Adhkar: ${adhkarPending.length} notifications');
+      for (final notif in adhkarPending) {
+        buffer.writeln('  ID ${notif['id']}: ${notif['title']}');
+      }
+    }
+
+    final summary = buffer.toString();
+    AppLogger.info(summary);
+    return summary;
   }
 
   /// Resolves the raw-resource (Android) / bundle filename-without-
