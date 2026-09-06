@@ -44,4 +44,7 @@ abstract final class AppConstants {
 
   /// Tracks whether the user was inside a surah (reader) when closing the app.
   static const String keyWasInsideQuranReader = 'was_inside_quran_reader';
+
+  /// Tracks whether the OEM autostart prompt has been shown.
+  static const String keyOemAutostartPrompted = 'oem_autostart_prompted';
 }
