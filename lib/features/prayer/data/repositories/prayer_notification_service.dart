@@ -16,19 +16,19 @@ import 'dart:io';
 import 'dart:ui' show Locale, PlatformDispatcher;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/app_logger.dart';
+import '../../../../core/utils/app_timezone.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../settings/domain/entities/settings_entities.dart';
 import '../../domain/entities/prayer_entities.dart';
 import 'adhan_audio_player.dart';
+import 'native_prayer_alarms.dart';
 import 'scheduling_lock.dart';
 
 /// Action identifiers used by the reminder / adhan notification buttons.
@@ -235,6 +235,7 @@ Future<void> _handleAction(NotificationResponse response) async {
     for (final key in _adhanPrayerKeys) {
       await plugin.cancel(PrayerNotificationIds.adhanId(key));
     }
+    await NativePrayerAlarms.stopAdhan();
     // This handler can run in a background isolate (app terminated or in the
     // background), where the DI container has not been configured. Resolve the
     // audio player defensively so stop attempts never throw out of here.
@@ -254,18 +255,13 @@ class PrayerNotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
   bool _isInitialized = false;
+  List<Map<String, dynamic>>? _nativeBatch;
 
   /// Initializes timezone and local notification plugin.
   Future<void> initialize() async {
     if (_isInitialized) return;
 
-    tz.initializeTimeZones();
-    try {
-      final timeZoneName = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(timeZoneName));
-    } catch (e) {
-      debugPrint('Failed to resolve local timezone: $e');
-    }
+    await AppTimeZone.ensureInitialized();
 
 
     final l10n = lookupAppLocalizations(PlatformDispatcher.instance.locale);
@@ -369,6 +365,9 @@ class PrayerNotificationService {
             .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
         final notificationsGranted = await androidImpl?.requestNotificationsPermission() ?? false;
         final exactAlarmsGranted = await androidImpl?.requestExactAlarmsPermission();
+        try {
+          await NativePrayerAlarms.notifyNative();
+        } catch (_) {}
         return notificationsGranted && (exactAlarmsGranted ?? true);
       }
     } catch (e) {
@@ -383,6 +382,7 @@ class PrayerNotificationService {
   Future<void> cancelAllNotifications() async {
     try {
       await _notificationsPlugin.cancelAll();
+      await NativePrayerAlarms.cancelAll();
     } catch (e, st) {
       debugPrint('cancelAllNotifications failed: $e\n$st');
     }
@@ -409,12 +409,15 @@ class PrayerNotificationService {
   /// action when exact scheduling is unavailable (which would otherwise
   /// make notifications fire late).
   Future<bool> canScheduleExactAlarms() async {
+    if (Platform.isAndroid) {
+      return NativePrayerAlarms.canScheduleExactAlarms();
+    }
     try {
       final androidImpl = _notificationsPlugin
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-      return await androidImpl?.canScheduleExactNotifications() ?? false;
+      return await androidImpl?.canScheduleExactNotifications() ?? true;
     } catch (_) {
-      return false;
+      return true;
     }
   }
 
@@ -467,9 +470,6 @@ class PrayerNotificationService {
     try {
       await initialize();
 
-      // Keep stale prayer alarms from firing after the user turns
-      // notifications off. Callers that still need Adhkar should
-      // reschedule them after this returns.
       if (!settings.notificationsEnabled) {
         AppLogger.info('Notifications disabled, canceling all');
         await cancelAllNotifications();
@@ -477,21 +477,24 @@ class PrayerNotificationService {
       }
 
       final l10n = lookupAppLocalizations(_resolveNotificationLocale(language));
-
-      // Check if there's an active adhan currently playing to avoid canceling it
       final activePrayerKey = PrayerNotificationIds.activePrayerKey(prayerTimes, settings);
-      AppLogger.debug('Active prayer key: $activePrayerKey');
+      final useNative = Platform.isAndroid;
+      _nativeBatch = useNative ? <Map<String, dynamic>>[] : null;
 
-      if (activePrayerKey != null) {
-        AppLogger.info('Adhan active for $activePrayerKey - preserving it');
-        await _cancelAllNotificationsExcept(activePrayerKey);
+      if (!useNative) {
+        if (activePrayerKey != null) {
+          await _cancelAllNotificationsExcept(activePrayerKey);
+        } else {
+          await _notificationsPlugin.cancelAll();
+        }
       } else {
-        await cancelAllNotifications();
+        // Drop leftover flutter_local_notifications alarms from older builds.
+        try {
+          await _notificationsPlugin.cancelAll();
+        } catch (_) {}
       }
 
       final scheduleMode = await _resolveAndroidScheduleMode();
-      AppLogger.debug('Android schedule mode: $scheduleMode');
-
       final todayTimes = <String, DateTime>{
         'fajr': prayerTimes.fajr,
         'sunrise': prayerTimes.sunrise,
@@ -522,8 +525,6 @@ class PrayerNotificationService {
           now: now,
         );
         final title = _displayName(l10n, key);
-        // Per-prayer sound: the global adhan-sound switch minus prayers the
-        // user has individually silenced (settings.silentPrayers).
         final playSound = settings.prayerHasSound(key);
 
         await _scheduleReminder(
@@ -537,11 +538,8 @@ class PrayerNotificationService {
           playSound: playSound,
         );
 
-        // Don't reschedule the adhan for the currently active prayer —
-        // it is already showing and playing. Calling _scheduleAdhan with
-        // tomorrow's time + the same notification ID would cancel the
-        // currently-showing notification and kill its sound immediately.
-        if (_adhanPrayerKeys.contains(key) && key != activePrayerKey) {
+        final skipAdhan = !useNative && key == activePrayerKey;
+        if (_adhanPrayerKeys.contains(key) && !skipAdhan) {
           await _scheduleAdhan(
             l10n: l10n,
             prayerKey: key,
@@ -555,8 +553,10 @@ class PrayerNotificationService {
           scheduledCount++;
         }
       }
+      await _flushNativeBatch('prayer');
       AppLogger.info('Scheduled $scheduledCount adhan notifications (sound=${settings.adhanSoundEnabled})');
     } finally {
+      _nativeBatch = null;
       await SchedulingLock.release();
     }
   }
@@ -597,9 +597,9 @@ class PrayerNotificationService {
       final l10n = lookupAppLocalizations(_resolveNotificationLocale(language));
       final now = DateTime.now();
       final scheduleMode = await _resolveAndroidScheduleMode();
+      final useNative = Platform.isAndroid;
+      _nativeBatch = useNative ? <Map<String, dynamic>>[] : null;
 
-      // Check if there's an active adhan currently playing on day 0
-      // to avoid canceling it.
       String? activePrayerKey;
       if (days.isNotEmpty) {
         activePrayerKey = PrayerNotificationIds.activePrayerKey(
@@ -608,11 +608,16 @@ class PrayerNotificationService {
         );
       }
 
-      if (activePrayerKey != null) {
-        AppLogger.info('Adhan active for $activePrayerKey on day 0 - preserving it');
-        await _cancelAllNotificationsExcept(activePrayerKey);
+      if (!useNative) {
+        if (activePrayerKey != null) {
+          await _cancelAllNotificationsExcept(activePrayerKey);
+        } else {
+          await _notificationsPlugin.cancelAll();
+        }
       } else {
-        await cancelAllNotifications();
+        try {
+          await _notificationsPlugin.cancelAll();
+        } catch (_) {}
       }
 
       int totalScheduled = 0;
@@ -632,15 +637,11 @@ class PrayerNotificationService {
           if (settings.mutedPrayers.contains(key)) continue;
           final prayerTime = dayTimes[key]!;
 
-          // For today (dayOffset 0), skip past times. For future days,
-          // schedule all prayers since they're all in the future.
           if (dayOffset == 0 && !prayerTime.isAfter(now)) continue;
 
           final title = _displayName(l10n, key);
           final playSound = settings.prayerHasSound(key);
-
-          // Don't reschedule the adhan for the currently active prayer on day 0.
-          final skipAdhan = dayOffset == 0 && key == activePrayerKey;
+          final skipAdhan = !useNative && dayOffset == 0 && key == activePrayerKey;
 
           await _scheduleReminder(
             l10n: l10n,
@@ -670,8 +671,10 @@ class PrayerNotificationService {
           }
         }
       }
+      await _flushNativeBatch('prayer');
       AppLogger.info('Multi-day: scheduled $totalScheduled adhan notifications across ${days.length} days');
     } finally {
+      _nativeBatch = null;
       await SchedulingLock.release();
     }
   }
@@ -708,6 +711,7 @@ class PrayerNotificationService {
       final l10n = lookupAppLocalizations(locale);
       final now = DateTime.now();
       final scheduleMode = await _resolveAndroidScheduleMode();
+      _nativeBatch = Platform.isAndroid ? <Map<String, dynamic>>[] : null;
 
       final morningTime = _resolveUpcomingTime(
         today: todayTimes.fajr.add(const Duration(hours: 1)),
@@ -743,7 +747,9 @@ class PrayerNotificationService {
         scheduleMode: scheduleMode,
         l10n: l10n,
       );
+      await _flushNativeBatch('adhkar');
     } finally {
+      _nativeBatch = null;
       await SchedulingLock.release();
     }
   }
@@ -827,6 +833,7 @@ class PrayerNotificationService {
       for (final key in _adhanPrayerKeys) {
         await _notificationsPlugin.cancel(PrayerNotificationIds.adhanId(key));
       }
+      await NativePrayerAlarms.stopAdhan();
 
       try {
         final audioPlayer = getIt<AdhanAudioPlayer>();
@@ -850,11 +857,33 @@ class PrayerNotificationService {
   }) async {
     await initialize();
     final soundName = _soundResourceFor('dhuhr', adhanType);
+    final testTime = DateTime.now().add(Duration(seconds: secondsDelay));
+
+    if (Platform.isAndroid) {
+      await NativePrayerAlarms.upsert(
+        [
+          {
+            'id': 9999,
+            'triggerAtMillis': testTime.millisecondsSinceEpoch,
+            'prayerKey': 'dhuhr',
+            'kind': 'adhan',
+            'title': 'Test Adhan Notification',
+            'body': 'It is time for Prayer (Test)',
+            'sound': playSound ? soundName : 'none',
+          },
+        ],
+        group: 'test',
+      );
+      AppLogger.info(
+        'SUCCESS: Native test adhan scheduled in $secondsDelay seconds (sound=$soundName)',
+      );
+      return;
+    }
+
     final channelId = playSound
         ? 'adhan_alarm_channel_${soundName}_v7'
         : 'adhan_alarm_channel_silent_v7';
     final scheduleMode = await _resolveAndroidScheduleMode();
-    final testTime = DateTime.now().add(Duration(seconds: secondsDelay));
 
     final adhanAndroid = AndroidNotificationDetails(
       channelId,
@@ -907,6 +936,33 @@ class PrayerNotificationService {
 
   // ── Internal helpers ──
 
+  Future<void> _flushNativeBatch(String group) async {
+    final batch = _nativeBatch;
+    _nativeBatch = null;
+    if (batch == null) return;
+    await NativePrayerAlarms.upsert(batch, group: group);
+  }
+
+  void _queueNativeAlarm({
+    required int id,
+    required DateTime when,
+    required String prayerKey,
+    required String kind,
+    required String title,
+    required String body,
+    required String sound,
+  }) {
+    _nativeBatch?.add({
+      'id': id,
+      'triggerAtMillis': when.millisecondsSinceEpoch,
+      'prayerKey': prayerKey,
+      'kind': kind,
+      'title': title,
+      'body': body,
+      'sound': sound,
+    });
+  }
+
   /// Picks [today] when it is still in the future, otherwise [tomorrow]
   /// (or today + 1 day as a last-resort approximation).
   static DateTime _resolveUpcomingTime({
@@ -935,6 +991,20 @@ class PrayerNotificationService {
 
     final hasAdhan = _adhanPrayerKeys.contains(prayerKey);
     final reminderText = l10n.prayerReminderNotificationBody(title, reminderMinutes);
+
+    if (_nativeBatch != null) {
+      _queueNativeAlarm(
+        id: PrayerNotificationIds.reminderId(prayerKey, dayOffset: dayOffset),
+        when: reminderTime,
+        prayerKey: prayerKey,
+        kind: 'reminder',
+        title: reminderText,
+        body: reminderText,
+        sound: playSound ? 'default' : 'none',
+      );
+      AppLogger.info('Queued native reminder for $title at $reminderTime');
+      return;
+    }
 
     final androidDetails = AndroidNotificationDetails(
       'prayer_reminder_channel',
@@ -995,9 +1065,25 @@ class PrayerNotificationService {
 
     final soundName = _soundResourceFor(prayerKey, adhanType);
     AppLogger.debug('Sound: $soundName for $prayerKey');
+
+    if (_nativeBatch != null) {
+      _queueNativeAlarm(
+        id: PrayerNotificationIds.adhanId(prayerKey, dayOffset: dayOffset),
+        when: prayerTime,
+        prayerKey: prayerKey,
+        kind: 'adhan',
+        title: l10n.prayerAdhanNotificationTitle(title),
+        body: l10n.prayerAdhanNotificationBody(title),
+        sound: playSound ? soundName : 'none',
+      );
+      AppLogger.info(
+        'Queued native adhan: $prayerKey at $prayerTime (sound=$soundName, id=${PrayerNotificationIds.adhanId(prayerKey, dayOffset: dayOffset)})',
+      );
+      return;
+    }
+
     // iOS custom notification sounds are capped (~30s). Full Adhan files
-    // exceed that, so Darwin always uses the short clip while Android
-    // still plays the selected full/short/Fajr resource from res/raw.
+    // exceed that, so Darwin always uses the short clip.
     final iosSoundName = Platform.isIOS ? 'adhan_short' : soundName;
 
     // The channel id is keyed to the sound variant. Android notification
@@ -1040,6 +1126,7 @@ class PrayerNotificationService {
       presentSound: playSound,
       presentAlert: true,
       presentBadge: true,
+      interruptionLevel: InterruptionLevel.timeSensitive,
       categoryIdentifier: _categoryAdhanPlaying,
     );
 
@@ -1083,8 +1170,25 @@ class PrayerNotificationService {
       debugPrint('Failed to cancel existing $kind adhkar reminder: $e');
     }
 
-    if (!enabled) return;
+    if (!enabled) {
+      if (_nativeBatch != null) return;
+      return;
+    }
     if (!reminderTime.isAfter(now)) return;
+
+    if (_nativeBatch != null) {
+      _queueNativeAlarm(
+        id: id,
+        when: reminderTime,
+        prayerKey: payload,
+        kind: 'reminder',
+        title: title,
+        body: body,
+        sound: 'default',
+      );
+      debugPrint('Queued native $kind adhkar reminder at $reminderTime');
+      return;
+    }
 
     final androidDetails = AndroidNotificationDetails(
       'adhkar_reminder_channel',
@@ -1128,7 +1232,7 @@ class PrayerNotificationService {
         debugPrint('[NOTIFICATION] Exact alarms permitted - using exact scheduling');
       }
       return canExact
-          ? AndroidScheduleMode.exactAllowWhileIdle
+          ? AndroidScheduleMode.alarmClock
           : AndroidScheduleMode.inexactAllowWhileIdle;
     } catch (e) {
       debugPrint('[NOTIFICATION] Failed to check exact-alarm permission: $e');

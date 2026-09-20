@@ -124,11 +124,20 @@ class _StartupPermissionPromptState extends State<StartupPermissionPrompt> {
 
     try {
       final intent = AndroidIntent(
-        action: 'android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS',
+        action: 'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
+        data: 'package:${AppConstants.orgName}',
       );
       await intent.launch();
     } catch (e) {
-      debugPrint('Failed to open battery optimization settings: $e');
+      debugPrint('Failed to request battery optimization exemption: $e');
+      try {
+        const fallback = AndroidIntent(
+          action: 'android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS',
+        );
+        await fallback.launch();
+      } catch (e2) {
+        debugPrint('Failed to open battery optimization settings: $e2');
+      }
     }
   }
 

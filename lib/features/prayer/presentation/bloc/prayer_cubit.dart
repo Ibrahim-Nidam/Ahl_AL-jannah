@@ -57,6 +57,7 @@ class PrayerCubit extends Cubit<PrayerState> {
       // the next month was never cached — that must not fail today's page,
       // so it is computed leniently.
       final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
       final isTodayView = targetDate.year == now.year &&
           targetDate.month == now.month &&
           targetDate.day == now.day;
@@ -69,16 +70,25 @@ class PrayerCubit extends Cubit<PrayerState> {
               settings: settings,
             );
 
-      PrayerTimeEntity? nextDayTimes;
-      try {
-        nextDayTimes = await _calculatePrayerTimesUseCase(
-          location: location,
-          date: DateTime(now.year, now.month, now.day).add(const Duration(days: 1)),
-          settings: settings,
-        );
-      } catch (e) {
-        debugPrint('[Prayer] Failed to compute next-day times: $e');
+      final daysData = <(DateTime, PrayerTimeEntity)>[(todayStart, notificationTimes)];
+      for (int dayOffset = 1; dayOffset < 7; dayOffset++) {
+        final date = todayStart.add(Duration(days: dayOffset));
+        try {
+          daysData.add((
+            date,
+            await _calculatePrayerTimesUseCase(
+              location: location,
+              date: date,
+              settings: settings,
+            ),
+          ));
+        } catch (e) {
+          debugPrint('[Prayer] Failed to compute day +$dayOffset times: $e');
+        }
       }
+
+      PrayerTimeEntity? nextDayTimes =
+          daysData.length > 1 ? daysData[1].$2 : null;
 
       final (nextName, nextTime) = _findNextPrayer(
         todayTimes,
@@ -105,12 +115,11 @@ class PrayerCubit extends Cubit<PrayerState> {
 
       await _notificationService.initialize();
       await _notificationService.requestPermissions();
-      await _notificationService.schedulePrayerNotifications(
-        notificationTimes,
+      await _notificationService.scheduleMultiDayNotifications(
+        daysData,
         settings,
         appSettings.adhanType,
         language: appSettings.language,
-        nextDayTimes: nextDayTimes,
       );
       // Adhkar reminders are independent of the prayer-notifications
       // toggle above (they have their own ON/OFF settings), and
@@ -259,6 +268,7 @@ class PrayerCubit extends Cubit<PrayerState> {
 
         // Always schedule against calendar "today", not the browsed date.
         final now = DateTime.now();
+        final todayStart = DateTime(now.year, now.month, now.day);
         final isTodayView = currentState.selectedDate.year == now.year &&
             currentState.selectedDate.month == now.month &&
             currentState.selectedDate.day == now.day;
@@ -270,17 +280,25 @@ class PrayerCubit extends Cubit<PrayerState> {
                 settings: newSettings,
               );
 
-        PrayerTimeEntity? nextDayTimes;
-        try {
-          nextDayTimes = await _calculatePrayerTimesUseCase(
-            location: currentState.location,
-            date: DateTime(now.year, now.month, now.day)
-                .add(const Duration(days: 1)),
-            settings: newSettings,
-          );
-        } catch (e) {
-          debugPrint('[Prayer] Failed to compute next-day times after setting change: $e');
+        final daysData = <(DateTime, PrayerTimeEntity)>[(todayStart, notificationTimes)];
+        for (int dayOffset = 1; dayOffset < 7; dayOffset++) {
+          final date = todayStart.add(Duration(days: dayOffset));
+          try {
+            daysData.add((
+              date,
+              await _calculatePrayerTimesUseCase(
+                location: currentState.location,
+                date: date,
+                settings: newSettings,
+              ),
+            ));
+          } catch (e) {
+            debugPrint('[Prayer] Failed to compute day +$dayOffset times after setting change: $e');
+          }
         }
+
+        PrayerTimeEntity? nextDayTimes =
+            daysData.length > 1 ? daysData[1].$2 : null;
 
         final (nextName, nextTime) = _findNextPrayer(
           todayTimes,
@@ -303,12 +321,11 @@ class PrayerCubit extends Cubit<PrayerState> {
 
         if (newSettings.notificationsEnabled) {
           final appSettings = await _getAppSettingsUseCase();
-          await _notificationService.schedulePrayerNotifications(
-            notificationTimes,
+          await _notificationService.scheduleMultiDayNotifications(
+            daysData,
             newSettings,
             appSettings.adhanType,
             language: appSettings.language,
-            nextDayTimes: nextDayTimes,
           );
         } else {
           await _notificationService.cancelAllNotifications();

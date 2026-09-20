@@ -49,8 +49,17 @@ class SchedulingLock {
       }
       await Future<void>.delayed(_pollInterval);
     }
-    AppLogger.warning('[SchedulingLock] Failed to acquire lock within $_acquireTimeout');
-    return false;
+    AppLogger.warning('[SchedulingLock] Timed out waiting; taking the lock anyway');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await _forceRelease(prefs);
+      await prefs.setString(_lockTimestampKey, DateTime.now().toIso8601String());
+      await prefs.setBool(_lockKey, true);
+      return true;
+    } catch (e) {
+      AppLogger.error('[SchedulingLock] Force-acquire failed', error: e);
+      return true;
+    }
   }
 
   /// Releases the scheduling lock.

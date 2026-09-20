@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -5,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../data/repositories/adhan_audio_player.dart';
+import '../../data/repositories/native_prayer_alarms.dart';
 
 import 'package:ahl_jannah/l10n/generated/app_localizations.dart';
 
@@ -73,8 +76,7 @@ class _PrayerPageState extends State<PrayerPage>
     WidgetsBinding.instance.addObserver(this);
     _cubit = getIt<PrayerCubit>();
     _loadManualAdhanStop();
-    // Force-refresh location every time the user enters the prayer page.
-    _cubit.loadPrayerTimes(forceRefresh: true);
+    _cubit.loadPrayerTimes(forceRefresh: false);
   }
 
   @override
@@ -90,7 +92,7 @@ class _PrayerPageState extends State<PrayerPage>
       // background isolate where this app's audio player can't be reached, so
       // re-check the persisted stop when the app comes back to the foreground.
       _applyPersistedManualStop();
-      // Re-verify exact alarm permission and reschedule if it was revoked.
+      NativePrayerAlarms.notifyNative();
       _checkExactAlarmsAndReschedule();
     }
   }
@@ -136,6 +138,7 @@ class _PrayerPageState extends State<PrayerPage>
       if (player.isPlaying && player.currentPrayerKey == stoppedKey) {
         await player.stopAdhan();
       }
+      await NativePrayerAlarms.stopAdhan();
     } catch (_) {}
   }
 
@@ -144,6 +147,7 @@ class _PrayerPageState extends State<PrayerPage>
   /// two audio sources from playing simultaneously, then re-shows a silent
   /// notification with the "Stop Adhan" button.
   Future<void> _startInAppAdhan(String prayerKey) async {
+    if (Platform.isAndroid) return;
     try {
       final player = getIt<AdhanAudioPlayer>();
       if (player.isPlaying && player.currentPrayerKey == prayerKey) return;
@@ -211,6 +215,7 @@ class _PrayerPageState extends State<PrayerPage>
     try {
       final player = getIt<AdhanAudioPlayer>();
       await player.stopAdhan();
+      await NativePrayerAlarms.stopAdhan();
     } catch (_) {}
   }
 
@@ -411,13 +416,19 @@ class _PrayerPageState extends State<PrayerPage>
                   : 0.0;
 
               final audioPlayerIsPlaying = getIt<AdhanAudioPlayer>().isPlaying;
-              final activePrayerKey = PrayerNotificationIds.activePrayerKey(state.todayTimes, state.settings);
+              final playingKey = PrayerNotificationIds.activePrayerKey(state.todayTimes, state.settings);
               final adhanPlaying = (isToday && _isAdhanPlaying(state.todayTimes, state.settings)) || audioPlayerIsPlaying;
-              final soundEnabled = activePrayerKey != null &&
-                  state.settings.prayerHasSound(activePrayerKey);
-              if (_manualStopReady && soundEnabled && adhanPlaying && !audioPlayerIsPlaying) {
+              final soundEnabled = playingKey != null &&
+                  state.settings.prayerHasSound(playingKey);
+              if (!Platform.isAndroid &&
+                  _manualStopReady &&
+                  playingKey != null &&
+                  soundEnabled &&
+                  adhanPlaying &&
+                  !audioPlayerIsPlaying) {
+                final key = playingKey;
                 WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _startInAppAdhan(activePrayerKey);
+                  _startInAppAdhan(key);
                 });
               }
 
