@@ -1,6 +1,9 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'package:ahl_jannah/core/theme/app_colors.dart';
 import 'package:ahl_jannah/core/theme/app_text_styles.dart';
@@ -11,7 +14,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../bloc/settings_cubit.dart';
 
-/// "More" tab page containing links to Hadith, Settings, and About.
+/// "More" tab page containing links to Hadith, Settings, About, and Share.
 class MorePage extends StatefulWidget {
   const MorePage({super.key});
 
@@ -27,6 +30,11 @@ class _MorePageState extends State<MorePage>
   /// Version read from the packaged app (pubspec `version: x.y.z+build`),
   /// shown in the About dialog so it can never drift from the release.
   String _appVersion = '';
+
+  /// Play Store / App Store URL resolved once from the current platform.
+  static final String _storeUrl = Platform.isIOS
+      ? 'https://apps.apple.com/app/id6746268498'
+      : 'https://play.google.com/store/apps/details?id=com.ibrahimnidam.ahljannah';
 
   @override
   void initState() {
@@ -97,6 +105,21 @@ class _MorePageState extends State<MorePage>
                     ),
                   );
                 },
+              );
+            },
+          ),
+          _MoreTile(
+            icon: Icons.share_rounded,
+            title: l10n.shareAppTileTitle,
+            subtitle: l10n.shareAppTileSubtitle,
+            color: AppColors.primaryGreenLight,
+            onTap: () {
+              final box = context.findRenderObject() as RenderBox?;
+              Share.share(
+                l10n.shareAppMessage(_storeUrl),
+                subject: l10n.shareAppSubject,
+                sharePositionOrigin:
+                    box != null ? box.localToGlobal(Offset.zero) & box.size : null,
               );
             },
           ),

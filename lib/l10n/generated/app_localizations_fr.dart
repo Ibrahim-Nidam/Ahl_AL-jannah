@@ -42,6 +42,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get aboutTileSubtitle => 'À propos d\'Ahl Jannah';
 
   @override
+  String get shareAppTileTitle => 'Partager l\'application';
+
+  @override
+  String get shareAppTileSubtitle =>
+      'Partagez Ahl Jannah avec vos proches et amis';
+
+  @override
+  String get shareAppSubject =>
+      'Ahl Jannah — Votre compagnon islamique complet';
+
+  @override
+  String shareAppMessage(String storeUrl) {
+    return 'Assalamu Alaikum ! Téléchargez Ahl Jannah — Votre application islamique complète et sans publicité :\n\n$storeUrl';
+  }
+
+  @override
   String get basmala => 'بسم الله الرحمن الرحيم';
 
   @override
@@ -495,6 +511,36 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prayerNextPrayer => 'PROCHAINE PRIÈRE';
+
+  @override
+  String get prayerTimeSinceAdhan => 'TEMPS ÉCOULÉ DEPUIS L\'APPEL';
+
+  @override
+  String prayerTimeSince(String prayer) {
+    return 'Temps depuis $prayer';
+  }
+
+  @override
+  String get prayerPrePrayerNotification =>
+      'Notification Compte à Rebours Avant la Prière';
+
+  @override
+  String get prayerPrePrayerNotificationSubtitle =>
+      'Afficher une notification avec compte à rebours avant chaque prière';
+
+  @override
+  String get prayerPrePrayerMinutes => 'Durée du Compte à Rebours';
+
+  @override
+  String get prayerPrePrayer15m => '15 minutes';
+
+  @override
+  String get prayerPrePrayer30m => '30 minutes';
+
+  @override
+  String prayerPrePrayerCountdownBody(String prayer, int minutes, int seconds) {
+    return 'Prière du $prayer dans ${minutes}m ${seconds}s';
+  }
 
   @override
   String get prayerTodaysPrayers => 'Prières d\'aujourd\'hui';

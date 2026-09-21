@@ -14,6 +14,15 @@
   "settingsTileSubtitle": "Theme, font size, and notifications",
   "aboutTileTitle": "About the App",
   "aboutTileSubtitle": "About Ahl Jannah",
+  "shareAppTileTitle": "Share App",
+  "shareAppTileSubtitle": "Share Ahl Jannah with family & friends",
+  "shareAppSubject": "Ahl Jannah — Your Comprehensive Islamic Companion App",
+  "shareAppMessage": "Assalamu Alaikum! Download Ahl Jannah — A comprehensive, ad-free offline Islamic companion app:\n\n{storeUrl}",
+  "@shareAppMessage": {
+    "placeholders": {
+      "storeUrl": { "type": "String" }
+    }
+  },
   "basmala": "بسم الله الرحمن الرحيم",
   "@basmala": {
     "description": "Fixed Quranic-Arabic phrase. Intentionally identical across all locales and always rendered right-to-left, regardless of app language."
@@ -265,6 +274,26 @@
   "prayerMadhabHanafi": "Hanafi",
   "prayerCalculationMethod": "Calculation Method",
   "prayerNextPrayer": "NEXT PRAYER",
+  "prayerTimeSinceAdhan": "TIME SINCE CALL TO PRAYER",
+  "prayerTimeSince": "Time since {prayer}",
+  "@prayerTimeSince": {
+    "placeholders": {
+      "prayer": { "type": "String" }
+    }
+  },
+  "prayerPrePrayerNotification": "Pre-Prayer Countdown Notification",
+  "prayerPrePrayerNotificationSubtitle": "Show a countdown notification before each prayer",
+  "prayerPrePrayerMinutes": "Countdown Duration",
+  "prayerPrePrayer15m": "15 minutes",
+  "prayerPrePrayer30m": "30 minutes",
+  "prayerPrePrayerCountdownBody": "{prayer} prayer in {minutes}m {seconds}s",
+  "@prayerPrePrayerCountdownBody": {
+    "placeholders": {
+      "prayer": { "type": "String" },
+      "minutes": { "type": "int" },
+      "seconds": { "type": "int" }
+    }
+  },
   "prayerTodaysPrayers": "Today's Prayers",
   "prayerTimesHeading": "Prayer Times",
   "prayerAdhanPlaying": "Adhan is playing...",

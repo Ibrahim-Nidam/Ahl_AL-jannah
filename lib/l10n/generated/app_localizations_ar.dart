@@ -42,6 +42,20 @@ class AppLocalizationsAr extends AppLocalizations {
   String get aboutTileSubtitle => 'عن تطبيق أهل الجنة';
 
   @override
+  String get shareAppTileTitle => 'مشاركة التطبيق';
+
+  @override
+  String get shareAppTileSubtitle => 'شارك تطبيق أهل الجنة مع الأهل والأصدقاء';
+
+  @override
+  String get shareAppSubject => 'تطبيق أهل الجنة — رفيقك المسلم الشامل';
+
+  @override
+  String shareAppMessage(String storeUrl) {
+    return 'السلام عليكم ورحمة الله وبركاته، حمل تطبيق أهل الجنة — تطبيق إسلامي شامل وبدون إعلانات:\n\n$storeUrl';
+  }
+
+  @override
   String get basmala => 'بسم الله الرحمن الرحيم';
 
   @override
@@ -493,6 +507,35 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get prayerNextPrayer => 'الصلاة التالية';
+
+  @override
+  String get prayerTimeSinceAdhan => 'الزمن المنقضي منذ الأذان';
+
+  @override
+  String prayerTimeSince(String prayer) {
+    return 'مر على أذان $prayer';
+  }
+
+  @override
+  String get prayerPrePrayerNotification => 'إشعار التنازلي قبل الصلاة';
+
+  @override
+  String get prayerPrePrayerNotificationSubtitle =>
+      'عرض إشعار تنازلي مباشر قبل كل صلاة';
+
+  @override
+  String get prayerPrePrayerMinutes => 'مدة التنازلي';
+
+  @override
+  String get prayerPrePrayer15m => '15 دقيقة';
+
+  @override
+  String get prayerPrePrayer30m => '30 دقيقة';
+
+  @override
+  String prayerPrePrayerCountdownBody(String prayer, int minutes, int seconds) {
+    return 'صلاة $prayer بعد $minutes د و $seconds ث';
+  }
 
   @override
   String get prayerTodaysPrayers => 'صلوات اليوم';

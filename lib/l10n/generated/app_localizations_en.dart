@@ -42,6 +42,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTileSubtitle => 'About Ahl Jannah';
 
   @override
+  String get shareAppTileTitle => 'Share App';
+
+  @override
+  String get shareAppTileSubtitle => 'Share Ahl Jannah with family & friends';
+
+  @override
+  String get shareAppSubject =>
+      'Ahl Jannah — Your Comprehensive Islamic Companion App';
+
+  @override
+  String shareAppMessage(String storeUrl) {
+    return 'Assalamu Alaikum! Download Ahl Jannah — A comprehensive, ad-free offline Islamic companion app:\n\n$storeUrl';
+  }
+
+  @override
   String get basmala => 'بسم الله الرحمن الرحيم';
 
   @override
@@ -493,6 +508,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prayerNextPrayer => 'NEXT PRAYER';
+
+  @override
+  String get prayerTimeSinceAdhan => 'TIME SINCE CALL TO PRAYER';
+
+  @override
+  String prayerTimeSince(String prayer) {
+    return 'Time since $prayer';
+  }
+
+  @override
+  String get prayerPrePrayerNotification => 'Pre-Prayer Countdown Notification';
+
+  @override
+  String get prayerPrePrayerNotificationSubtitle =>
+      'Show a countdown notification before each prayer';
+
+  @override
+  String get prayerPrePrayerMinutes => 'Countdown Duration';
+
+  @override
+  String get prayerPrePrayer15m => '15 minutes';
+
+  @override
+  String get prayerPrePrayer30m => '30 minutes';
+
+  @override
+  String prayerPrePrayerCountdownBody(String prayer, int minutes, int seconds) {
+    return '$prayer prayer in ${minutes}m ${seconds}s';
+  }
 
   @override
   String get prayerTodaysPrayers => 'Today\'s Prayers';

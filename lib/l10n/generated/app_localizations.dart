@@ -166,6 +166,30 @@ abstract class AppLocalizations {
   /// **'About Ahl Jannah'**
   String get aboutTileSubtitle;
 
+  /// No description provided for @shareAppTileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share App'**
+  String get shareAppTileTitle;
+
+  /// No description provided for @shareAppTileSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share Ahl Jannah with family & friends'**
+  String get shareAppTileSubtitle;
+
+  /// No description provided for @shareAppSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Ahl Jannah — Your Comprehensive Islamic Companion App'**
+  String get shareAppSubject;
+
+  /// No description provided for @shareAppMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Assalamu Alaikum! Download Ahl Jannah — A comprehensive, ad-free offline Islamic companion app:\n\n{storeUrl}'**
+  String shareAppMessage(String storeUrl);
+
   /// Fixed Quranic-Arabic phrase. Intentionally identical across all locales and always rendered right-to-left, regardless of app language.
   ///
   /// In en, this message translates to:
@@ -957,6 +981,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'NEXT PRAYER'**
   String get prayerNextPrayer;
+
+  /// No description provided for @prayerTimeSinceAdhan.
+  ///
+  /// In en, this message translates to:
+  /// **'TIME SINCE CALL TO PRAYER'**
+  String get prayerTimeSinceAdhan;
+
+  /// No description provided for @prayerTimeSince.
+  ///
+  /// In en, this message translates to:
+  /// **'Time since {prayer}'**
+  String prayerTimeSince(String prayer);
+
+  /// No description provided for @prayerPrePrayerNotification.
+  ///
+  /// In en, this message translates to:
+  /// **'Pre-Prayer Countdown Notification'**
+  String get prayerPrePrayerNotification;
+
+  /// No description provided for @prayerPrePrayerNotificationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show a countdown notification before each prayer'**
+  String get prayerPrePrayerNotificationSubtitle;
+
+  /// No description provided for @prayerPrePrayerMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Countdown Duration'**
+  String get prayerPrePrayerMinutes;
+
+  /// No description provided for @prayerPrePrayer15m.
+  ///
+  /// In en, this message translates to:
+  /// **'15 minutes'**
+  String get prayerPrePrayer15m;
+
+  /// No description provided for @prayerPrePrayer30m.
+  ///
+  /// In en, this message translates to:
+  /// **'30 minutes'**
+  String get prayerPrePrayer30m;
+
+  /// No description provided for @prayerPrePrayerCountdownBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{prayer} prayer in {minutes}m {seconds}s'**
+  String prayerPrePrayerCountdownBody(String prayer, int minutes, int seconds);
 
   /// No description provided for @prayerTodaysPrayers.
   ///
