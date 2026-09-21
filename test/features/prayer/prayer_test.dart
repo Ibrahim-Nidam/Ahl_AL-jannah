@@ -48,6 +48,11 @@ class MockPrayerRepository implements PrayerRepository {
   Future<void> cacheMonthlyPrayerTimes(int year, int month, String json) async {
     _monthlyCache['$year-$month'] = json;
   }
+
+  @override
+  Future<void> clearMonthlyPrayerTimesCache() async {
+    _monthlyCache.clear();
+  }
 }
 
 void main() {

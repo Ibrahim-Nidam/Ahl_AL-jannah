@@ -23,5 +23,16 @@ class AppTimeZone {
     _initialized = true;
   }
 
+  static Future<void> refreshTimezone() async {
+    tzdata.initializeTimeZones();
+    try {
+      final timeZoneName = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+      AppLogger.debug('Local timezone refreshed to $timeZoneName');
+    } catch (e) {
+      AppLogger.warning('Could not resolve device timezone on refresh: $e');
+    }
+  }
+
   static bool get isInitialized => _initialized;
 }
