@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:timezone/timezone.dart' as tz;
 
 import '../entities/prayer_entities.dart';
 import '../repositories/prayer_repository.dart';
@@ -84,39 +83,60 @@ class CalculatePrayerTimesUseCase {
   static int? _prefetchedNextYear;
   static int? _prefetchedNextMonth;
 
+  void clearMemoryCache() {
+    _activeDataList = null;
+    _activeTimezone = null;
+    _activeMonth = null;
+    _activeYear = null;
+    _activeMethodId = null;
+    _activeSchool = null;
+    _activeLat = null;
+    _activeLng = null;
+    _prefetchedNextYear = null;
+    _prefetchedNextMonth = null;
+  }
+
   Future<PrayerTimeEntity> call({
     required UserLocation location,
     required DateTime date,
     required PrayerTimesSettings settings,
+    bool forceRefresh = false,
   }) async {
+    if (forceRefresh) {
+      clearMemoryCache();
+      await _repository.clearMonthlyPrayerTimesCache();
+    }
+
     final methodId = settings.useAutomaticMethod
         ? estimateAladhanMethod(location.latitude, location.longitude)
         : (settings.manualMethodId ?? 3);
     final school = settings.madhab;
 
-    // 1. In-memory cache for this session (fast path).
-    final fromMemory = _fromActiveList(
-      location: location,
-      date: date,
-      methodId: methodId,
-      school: school,
-    );
-    if (fromMemory != null) return fromMemory;
-
-    // 2. Exact-month disk cache.
-    final cachedJson = await _repository.getCachedMonthlyPrayerTimes(
-      date.year,
-      date.month,
-    );
-    if (cachedJson != null) {
-      final parsed = _parseCachedMonth(
-        cachedJson,
+    // 1. In-memory cache for this session (fast path, skipped on forceRefresh).
+    if (!forceRefresh) {
+      final fromMemory = _fromActiveList(
         location: location,
         date: date,
         methodId: methodId,
         school: school,
       );
-      if (parsed != null) return parsed;
+      if (fromMemory != null) return fromMemory;
+
+      // 2. Exact-month disk cache (skipped on forceRefresh).
+      final cachedJson = await _repository.getCachedMonthlyPrayerTimes(
+        date.year,
+        date.month,
+      );
+      if (cachedJson != null) {
+        final parsed = _parseCachedMonth(
+          cachedJson,
+          location: location,
+          date: date,
+          methodId: methodId,
+          school: school,
+        );
+        if (parsed != null) return parsed;
+      }
     }
 
     // 3. Live fetch of the requested month (when online).
@@ -396,16 +416,40 @@ class CalculatePrayerTimesUseCase {
     return null;
   }
 
+  /// Extracts the LOCAL hour and minute from an Aladhan ISO‑8601 timing
+  /// string (e.g. `2026-09-20T04:42:00+01:00`), ignoring the embedded
+  /// UTC offset entirely.
+  ///
+  /// Why: The `timezone` Dart package bundles the IANA tz database at build
+  /// time.  When a country changes its UTC offset (e.g. Morocco +1 → +0)
+  /// the bundled data becomes stale, causing `tz.TZDateTime.parse` to
+  /// misinterpret the offset and display the wrong local time.  The Aladhan
+  /// API always returns the correct *local* time in the `THH:MM` portion of
+  /// the string — extracting it directly sidesteps stale tz‑database rules.
+  DateTime _parseLocalPrayerTime(String isoStr, DateTime date) {
+    // Find 'T' separator, then take the 'HH:MM' slice that follows it.
+    final tIdx = isoStr.indexOf('T');
+    if (tIdx < 0 || tIdx + 6 > isoStr.length) {
+      // Fallback: let Dart parse and hope for the best.
+      final dt = DateTime.parse(isoStr);
+      return DateTime(date.year, date.month, date.day, dt.hour, dt.minute);
+    }
+    final timePart = isoStr.substring(tIdx + 1, tIdx + 6); // 'HH:MM'
+    final parts = timePart.split(':');
+    final hour = int.parse(parts[0]);
+    final minute = int.parse(parts[1]);
+    return DateTime(date.year, date.month, date.day, hour, minute);
+  }
+
   PrayerTimeEntity _parseDayData(Map<String, dynamic> dayData, DateTime date, String timezoneName) {
-    final locationTz = tz.getLocation(timezoneName);
     final timings = dayData['timings'] as Map<String, dynamic>;
 
-    final fajrTime = tz.TZDateTime.parse(locationTz, timings['Fajr'] as String);
-    final sunriseTime = tz.TZDateTime.parse(locationTz, timings['Sunrise'] as String);
-    final dhuhrTime = tz.TZDateTime.parse(locationTz, timings['Dhuhr'] as String);
-    final asrTime = tz.TZDateTime.parse(locationTz, timings['Asr'] as String);
-    final maghribTime = tz.TZDateTime.parse(locationTz, timings['Maghrib'] as String);
-    final ishaTime = tz.TZDateTime.parse(locationTz, timings['Isha'] as String);
+    final fajrTime = _parseLocalPrayerTime(timings['Fajr'] as String, date);
+    final sunriseTime = _parseLocalPrayerTime(timings['Sunrise'] as String, date);
+    final dhuhrTime = _parseLocalPrayerTime(timings['Dhuhr'] as String, date);
+    final asrTime = _parseLocalPrayerTime(timings['Asr'] as String, date);
+    final maghribTime = _parseLocalPrayerTime(timings['Maghrib'] as String, date);
+    final ishaTime = _parseLocalPrayerTime(timings['Isha'] as String, date);
 
     String? hijriStr;
     String? hijriStrAr;

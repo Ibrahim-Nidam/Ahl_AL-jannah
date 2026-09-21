@@ -432,19 +432,21 @@ class _PrayerPageState extends State<PrayerPage>
                 });
               }
 
-              return GestureDetector(
-                onHorizontalDragEnd: (details) {
-                  if (details.primaryVelocity == null) return;
-                  if (details.primaryVelocity! > 300) {
-                    _navigateDate(-1); // Swipe right → previous day
-                  } else if (details.primaryVelocity! < -300) {
-                    _navigateDate(1);  // Swipe left → next day
-                  }
-                },
-                child: Scrollbar(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
+              return Stack(
+                children: [
+                  GestureDetector(
+                    onHorizontalDragEnd: (details) {
+                      if (details.primaryVelocity == null) return;
+                      if (details.primaryVelocity! > 300) {
+                        _navigateDate(-1); // Swipe right → previous day
+                      } else if (details.primaryVelocity! < -300) {
+                        _navigateDate(1);  // Swipe left → next day
+                      }
+                    },
+                    child: Scrollbar(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // ── Header Section ──
@@ -627,7 +629,7 @@ class _PrayerPageState extends State<PrayerPage>
                         const SizedBox(height: 20),
                       ],
 
-                      // ── Next Prayer Premium Banner Card ──
+                      // ── Next / Post Prayer Premium Banner Card ──
                       if (isToday) ...[
                         Container(
                           padding: const EdgeInsets.all(24),
@@ -659,7 +661,9 @@ class _PrayerPageState extends State<PrayerPage>
                           child: Column(
                             children: [
                               Text(
-                                l10n.prayerNextPrayer,
+                                state.isPostPrayer
+                                    ? l10n.prayerTimeSinceAdhan
+                                    : l10n.prayerNextPrayer,
                                 style: AppTextStyles.caption.copyWith(
                                   color: Colors.white.withAlpha(180),
                                   letterSpacing: 2,
@@ -668,7 +672,12 @@ class _PrayerPageState extends State<PrayerPage>
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                _prayerDisplayName(l10n, state.nextPrayerName).toUpperCase(),
+                                _prayerDisplayName(
+                                  l10n,
+                                  state.isPostPrayer
+                                      ? (state.currentPrayerName ?? '')
+                                      : state.nextPrayerName,
+                                ).toUpperCase(),
                                 style: AppTextStyles.headingLarge.copyWith(
                                   color: AppColors.accentGold,
                                   fontSize: 40,
@@ -676,7 +685,9 @@ class _PrayerPageState extends State<PrayerPage>
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                _formatDuration(state.timeRemaining),
+                                state.isPostPrayer
+                                    ? '\u200E+${_formatDuration(state.timeSincePrayer ?? Duration.zero)}'
+                                    : _formatDuration(state.timeRemaining),
                                 style: AppTextStyles.headingMedium.copyWith(
                                   color: Colors.white,
                                   fontFamily:
@@ -688,7 +699,9 @@ class _PrayerPageState extends State<PrayerPage>
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
                                 child: LinearProgressIndicator(
-                                  value: progress,
+                                  value: state.isPostPrayer
+                                      ? (((state.timeSincePrayer?.inSeconds ?? 0) / (30 * 60)).clamp(0.0, 1.0))
+                                      : progress,
                                   minHeight: 6,
                                   backgroundColor: Colors.white.withAlpha(50),
                                   valueColor: const AlwaysStoppedAnimation<Color>(
@@ -771,8 +784,10 @@ class _PrayerPageState extends State<PrayerPage>
                   ),
                 ),
               ),
-              );
-            }
+            ),
+            ],
+          );
+        }
 
             return const SizedBox.shrink();
           },
@@ -1315,6 +1330,8 @@ class _PrayerSettingsSheetState extends State<_PrayerSettingsSheet> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 16),
+
                       const SizedBox(height: 16),
                     ],
                   ),

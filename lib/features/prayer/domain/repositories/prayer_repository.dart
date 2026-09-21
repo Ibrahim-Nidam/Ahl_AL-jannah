@@ -28,4 +28,7 @@ abstract interface class PrayerRepository {
   /// Only the current and next month are retained on disk; any older cached
   /// months are pruned to keep storage bounded.
   Future<void> cacheMonthlyPrayerTimes(int year, int month, String json);
+
+  /// Clears all monthly prayer times caches stored on disk.
+  Future<void> clearMonthlyPrayerTimesCache();
 }

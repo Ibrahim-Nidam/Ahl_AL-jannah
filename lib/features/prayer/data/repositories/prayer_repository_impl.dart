@@ -155,4 +155,14 @@ class PrayerRepositoryImpl implements PrayerRepository {
       }
     }
   }
+
+  @override
+  Future<void> clearMonthlyPrayerTimesCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyMonthlyPrayerTimes);
+    final keysToRemove = prefs.getKeys().where((k) => k.startsWith(_keyMonthlyPrayerTimesPrefix)).toList();
+    for (final key in keysToRemove) {
+      await prefs.remove(key);
+    }
+  }
 }

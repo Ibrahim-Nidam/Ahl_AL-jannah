@@ -527,17 +527,6 @@ class PrayerNotificationService {
         final title = _displayName(l10n, key);
         final playSound = settings.prayerHasSound(key);
 
-        await _scheduleReminder(
-          l10n: l10n,
-          prayerKey: key,
-          title: title,
-          prayerTime: time,
-          now: now,
-          reminderMinutes: settings.reminderInterval,
-          scheduleMode: scheduleMode,
-          playSound: playSound,
-        );
-
         final skipAdhan = !useNative && key == activePrayerKey;
         if (_adhanPrayerKeys.contains(key) && !skipAdhan) {
           await _scheduleAdhan(
@@ -642,18 +631,6 @@ class PrayerNotificationService {
           final title = _displayName(l10n, key);
           final playSound = settings.prayerHasSound(key);
           final skipAdhan = !useNative && dayOffset == 0 && key == activePrayerKey;
-
-          await _scheduleReminder(
-            l10n: l10n,
-            prayerKey: key,
-            title: title,
-            prayerTime: prayerTime,
-            now: now,
-            reminderMinutes: settings.reminderInterval,
-            scheduleMode: scheduleMode,
-            playSound: playSound,
-            dayOffset: dayOffset,
-          );
 
           if (_adhanPrayerKeys.contains(key) && !skipAdhan) {
             await _scheduleAdhan(
@@ -975,76 +952,7 @@ class PrayerNotificationService {
     return today.add(const Duration(days: 1));
   }
 
-  Future<void> _scheduleReminder({
-    required AppLocalizations l10n,
-    required String prayerKey,
-    required String title,
-    required DateTime prayerTime,
-    required DateTime now,
-    required int reminderMinutes,
-    required AndroidScheduleMode scheduleMode,
-    required bool playSound,
-    int dayOffset = 0,
-  }) async {
-    final reminderTime = prayerTime.subtract(Duration(minutes: reminderMinutes));
-    if (!reminderTime.isAfter(now)) return;
 
-    final hasAdhan = _adhanPrayerKeys.contains(prayerKey);
-    final reminderText = l10n.prayerReminderNotificationBody(title, reminderMinutes);
-
-    if (_nativeBatch != null) {
-      _queueNativeAlarm(
-        id: PrayerNotificationIds.reminderId(prayerKey, dayOffset: dayOffset),
-        when: reminderTime,
-        prayerKey: prayerKey,
-        kind: 'reminder',
-        title: reminderText,
-        body: reminderText,
-        sound: playSound ? 'default' : 'none',
-      );
-      AppLogger.info('Queued native reminder for $title at $reminderTime');
-      return;
-    }
-
-    final androidDetails = AndroidNotificationDetails(
-      'prayer_reminder_channel',
-      l10n.prayerNotificationChannelName,
-      channelDescription: l10n.prayerReminderChannelDescription,
-      importance: Importance.high,
-      priority: Priority.high,
-      playSound: playSound,
-      actions: hasAdhan
-          ? [
-              AndroidNotificationAction(
-                _actionCancelAdhan,
-                l10n.prayerCancelAdhan,
-                cancelNotification: true,
-              ),
-            ]
-          : null,
-    );
-
-    final iosDetails = DarwinNotificationDetails(
-      presentSound: playSound,
-      categoryIdentifier: hasAdhan ? _categoryReminder : null,
-    );
-
-    try {
-      await _notificationsPlugin.zonedSchedule(
-        PrayerNotificationIds.reminderId(prayerKey, dayOffset: dayOffset),
-        reminderText,
-        reminderText,
-        tz.TZDateTime.from(reminderTime, tz.local),
-        NotificationDetails(android: androidDetails, iOS: iosDetails),
-        androidScheduleMode: scheduleMode,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-        payload: prayerKey,
-      );
-      debugPrint('Scheduled reminder for $title at $reminderTime');
-    } catch (e) {
-      debugPrint('Failed to schedule reminder for $title: $e');
-    }
-  }
 
   Future<void> _scheduleAdhan({
     required AppLocalizations l10n,

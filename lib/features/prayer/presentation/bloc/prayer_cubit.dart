@@ -8,6 +8,8 @@ import '../../domain/entities/prayer_entities.dart';
 import '../../domain/usecases/prayer_usecases.dart';
 import '../../data/repositories/prayer_notification_service.dart';
 
+import '../../../../core/utils/app_timezone.dart';
+
 part 'prayer_state.dart';
 
 @lazySingleton
@@ -36,6 +38,10 @@ class PrayerCubit extends Cubit<PrayerState> {
     _stopTimer();
 
     try {
+      if (forceRefresh) {
+        await AppTimeZone.refreshTimezone();
+      }
+
       final location = await _getUserLocationUseCase(
         forceRefresh: forceRefresh,
       );
@@ -46,6 +52,7 @@ class PrayerCubit extends Cubit<PrayerState> {
         location: location,
         date: targetDate,
         settings: settings,
+        forceRefresh: forceRefresh,
       );
 
       final hijriStr = todayTimes.hijriDateStr ?? '';
@@ -95,6 +102,9 @@ class PrayerCubit extends Cubit<PrayerState> {
         nextDayFajr: nextDayTimes?.fajr,
       );
       final remaining = nextTime.difference(DateTime.now());
+      final (isPost, postName, postElapsed) = isTodayView
+          ? _checkPostPrayer(todayTimes)
+          : (false, null, null);
 
       emit(
         PrayerLoadSuccess(
@@ -108,6 +118,9 @@ class PrayerCubit extends Cubit<PrayerState> {
           hijriDateStrAr: hijriStrAr,
           selectedDate: targetDate,
           nextDayFajr: nextDayTimes?.fajr,
+          isPostPrayer: isPost,
+          currentPrayerName: postName,
+          timeSincePrayer: postElapsed,
         ),
       );
 
@@ -351,7 +364,7 @@ class PrayerCubit extends Cubit<PrayerState> {
   /// Starts a 1-second periodic timer to update the countdown in the state.
   void _startTimer() {
     _countdownTimer?.cancel();
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       final currentState = state;
       if (currentState is PrayerLoadSuccess) {
         final now = DateTime.now();
@@ -360,34 +373,82 @@ class PrayerCubit extends Cubit<PrayerState> {
             currentState.selectedDate.day == now.day;
 
         if (!isTodayView) {
+          final yesterday = now.subtract(const Duration(days: 1));
+          final wasYesterday = currentState.selectedDate.year == yesterday.year &&
+              currentState.selectedDate.month == yesterday.month &&
+              currentState.selectedDate.day == yesterday.day;
+
+          if (wasYesterday) {
+            // Day rolled over at midnight! Auto-reload prayer times for the new day.
+            await loadPrayerTimes(date: now);
+            return;
+          }
+
           _countdownTimer?.cancel();
           return;
         }
 
-        final remaining = currentState.nextPrayerTime.difference(now);
+        final (isPost, postName, postElapsed) = _checkPostPrayer(currentState.todayTimes);
 
-        if (remaining.isNegative || remaining.inSeconds == 0) {
-          // Current prayer time passed! Transition UI to next prayer without calling
-          // loadPrayerTimes() which would cancel pending system notifications.
-          final (nextName, nextTime) = _findNextPrayer(
-            currentState.todayTimes,
-            nextDayFajr: currentState.nextDayFajr,
-          );
-          final newRemaining = nextTime.difference(now);
-          emit(
-            currentState.copyWith(
-              nextPrayerName: nextName,
-              nextPrayerTime: nextTime,
-              timeRemaining: newRemaining,
-            ),
-          );
-        } else {
-          emit(currentState.copyWith(timeRemaining: remaining));
-        }
+        final (nextName, nextTime) = _findNextPrayer(
+          currentState.todayTimes,
+          nextDayFajr: currentState.nextDayFajr,
+        );
+        final remaining = nextTime.difference(now);
+
+        emit(
+          currentState.copyWith(
+            nextPrayerName: nextName,
+            nextPrayerTime: nextTime,
+            timeRemaining: remaining,
+            isPostPrayer: isPost,
+            currentPrayerName: postName,
+            timeSincePrayer: postElapsed,
+          ),
+        );
       } else {
         _countdownTimer?.cancel();
       }
     });
+  }
+
+  (bool, String?, Duration?) _checkPostPrayer(PrayerTimeEntity today) {
+    final now = DateTime.now();
+    final list = <(String, DateTime)>[
+      ('Fajr', today.fajr),
+      ('Sunrise', today.sunrise),
+      ('Dhuhr', today.dhuhr),
+      ('Asr', today.asr),
+      ('Maghrib', today.maghrib),
+      ('Isha', today.isha),
+    ];
+
+    for (final (name, time) in list) {
+      if (!now.isBefore(time) && now.isBefore(time.add(const Duration(minutes: 30)))) {
+        return (true, name, now.difference(time));
+      }
+    }
+
+    // After midnight but before today's Fajr: check yesterday's Isha
+    if (now.isBefore(today.fajr)) {
+      final currentState = state;
+      if (currentState is PrayerLoadSuccess) {
+        final yesterday = now.subtract(const Duration(days: 1));
+        final yesterdayTimes = _calculatePrayerTimesUseCase.calculateLocal(
+          location: currentState.location,
+          date: yesterday,
+          settings: currentState.settings,
+        );
+        if (yesterdayTimes != null) {
+          final isha = yesterdayTimes.isha;
+          if (!now.isBefore(isha) && now.isBefore(isha.add(const Duration(minutes: 30)))) {
+            return (true, 'Isha', now.difference(isha));
+          }
+        }
+      }
+    }
+
+    return (false, null, null);
   }
 
   void _stopTimer() {
