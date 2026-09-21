@@ -67,7 +67,7 @@ class _QuranLandscapeReaderState extends State<QuranLandscapeReader> {
   final ScrollController _scrollController = ScrollController();
   final List<AyahEntity> _ayahs = [];
   final Map<int, GlobalKey> _pageMarkerKeys = {};
-  final Map<int, TapGestureRecognizer> _recognizers = {};
+  final Map<int, LongPressGestureRecognizer> _recognizers = {};
 
   int _nextPageToLoad = 1;
   bool _isLoadingMore = false;
@@ -176,10 +176,11 @@ class _QuranLandscapeReaderState extends State<QuranLandscapeReader> {
     );
   }
 
-  TapGestureRecognizer _getOrCreateRecognizer(AyahEntity ayah) {
+  LongPressGestureRecognizer _getOrCreateRecognizer(AyahEntity ayah) {
     return _recognizers.putIfAbsent(
       ayah.id,
-      () => TapGestureRecognizer()..onTap = () => widget.onAyahTapped(ayah),
+      () => LongPressGestureRecognizer(duration: const Duration(milliseconds: 300))
+        ..onLongPress = () => widget.onAyahTapped(ayah),
     );
   }
 

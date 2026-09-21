@@ -81,7 +81,7 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
 
   final ScrollController _scrollController = ScrollController();
   final Map<int, GlobalKey> _ayahKeys = {};
-  final Map<int, TapGestureRecognizer> _recognizers = {};
+  final Map<int, LongPressGestureRecognizer> _recognizers = {};
 
   @override
   void initState() {
@@ -209,10 +209,11 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
     return groups;
   }
 
-  TapGestureRecognizer _getOrCreateRecognizer(AyahEntity ayah) {
+  LongPressGestureRecognizer _getOrCreateRecognizer(AyahEntity ayah) {
     return _recognizers.putIfAbsent(
       ayah.id,
-      () => TapGestureRecognizer()..onTap = () => widget.onAyahTapped(ayah),
+      () => LongPressGestureRecognizer(duration: const Duration(milliseconds: 300))
+        ..onLongPress = () => widget.onAyahTapped(ayah),
     );
   }
 
@@ -289,7 +290,7 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
         final surahName = _getSurahEntity(ayah.surahId).nameEn;
 
         return GestureDetector(
-          onTap: () => widget.onAyahTapped(ayah),
+          onLongPress: () => widget.onAyahTapped(ayah),
           child: Container(
             key: key,
             margin: const EdgeInsets.only(bottom: 16),

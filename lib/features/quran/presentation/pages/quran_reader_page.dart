@@ -414,6 +414,25 @@ class _QuranReaderPageState extends State<QuranReaderPage>
         .toSet();
   }
 
+  void _showCustomToast(String message) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(milliseconds: 1000),
+        behavior: SnackBarBehavior.floating,
+        content: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            messenger.hideCurrentSnackBar();
+          },
+          child: Text(message),
+        ),
+      ),
+    );
+  }
+
   Future<void> _togglePageBookmark() async {
     final pageNum = _currentPageNumber;
     final existing = _currentPageBookmark;
@@ -421,20 +440,11 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       try {
         await _bookmarkStorage.removeBookmark(_activeRiwaya(), existing.id);
         await _loadBookmarks();
-        if (!mounted) return;
         final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.quranPageRemovedBookmark(pageNum)),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _showCustomToast(l10n.quranPageRemovedBookmark(pageNum));
       } catch (e) {
-        if (!mounted) return;
         final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.quranFailedRemoveBookmark('$e'))),
-        );
+        _showCustomToast(l10n.quranFailedRemoveBookmark('$e'));
       }
     } else {
       try {
@@ -456,22 +466,12 @@ class _QuranReaderPageState extends State<QuranReaderPage>
             readingMode: _readerMode,
           );
           await _loadBookmarks();
-          if (!mounted) return;
           final l10n = AppLocalizations.of(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l10n.quranPageBookmarked(pageNum)),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          _showCustomToast(l10n.quranPageBookmarked(pageNum));
         }
       } catch (e) {
-        if (mounted) {
-          final l10n = AppLocalizations.of(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.quranFailedBookmarkPage('$e'))),
-          );
-        }
+        final l10n = AppLocalizations.of(context);
+        _showCustomToast(l10n.quranFailedBookmarkPage('$e'));
       }
     }
   }
@@ -485,23 +485,12 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       try {
         await _bookmarkStorage.removeBookmark(_activeRiwaya(), existing.id);
         await _loadBookmarks();
-        if (!mounted) return;
         final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              l10n.quranVerseRemovedBookmark(ayah.surahId, ayah.number),
-            ),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _showCustomToast(l10n.quranVerseRemovedBookmark(ayah.surahId, ayah.number));
         setState(() => _selectedAyah = null);
       } catch (e) {
-        if (!mounted) return;
         final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.quranFailedRemoveBookmark('$e'))),
-        );
+        _showCustomToast(l10n.quranFailedRemoveBookmark('$e'));
       }
     } else {
       try {
@@ -520,21 +509,12 @@ class _QuranReaderPageState extends State<QuranReaderPage>
           readingMode: _readerMode,
         );
         await _loadBookmarks();
-        if (!mounted) return;
         final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.quranVerseBookmarked(ayah.surahId, ayah.number)),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _showCustomToast(l10n.quranVerseBookmarked(ayah.surahId, ayah.number));
         setState(() => _selectedAyah = null);
       } catch (e) {
-        if (!mounted) return;
         final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.quranFailedBookmarkVerse('$e'))),
-        );
+        _showCustomToast(l10n.quranFailedBookmarkVerse('$e'));
       }
     }
   }
@@ -551,9 +531,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
         '${surah.nameEn} ${ayah.surahId}:${ayah.number}\n\n'
         '${QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(ayah.textAr)}\n\n${translationText ?? ""}';
     Clipboard.setData(ClipboardData(text: textToCopy));
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(l10n.quranVerseCopied)));
+    _showCustomToast(l10n.quranVerseCopied);
     setState(() => _selectedAyah = null);
   }
 
@@ -570,9 +548,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
         '📖 *${surah.nameEn}* (${ayah.surahId}:${ayah.number})\n\n'
         '« ${QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(ayah.textAr)} »\n\n${translationText ?? ""}\n\n${l10n.quranShareViaApp}';
     Clipboard.setData(ClipboardData(text: shareText));
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(l10n.quranVerseShareReady)));
+    _showCustomToast(l10n.quranVerseShareReady);
     setState(() => _selectedAyah = null);
   }
 

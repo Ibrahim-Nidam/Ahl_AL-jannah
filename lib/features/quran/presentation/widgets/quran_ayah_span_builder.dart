@@ -111,7 +111,7 @@ abstract final class QuranAyahSpanBuilder {
     required Color accentColor,
     required AyahEntity? selectedAyah,
     required Set<String> bookmarkedAyahKeys,
-    required TapGestureRecognizer Function(AyahEntity ayah) recognizerFor,
+    required GestureRecognizer Function(AyahEntity ayah) recognizerFor,
     bool showTajweed = false,
     String fontFamily = 'Lateef',
     List<String> fontFamilyFallback = const ['Noto Naskh Arabic', 'Scheherazade New', 'Arial'],
@@ -178,7 +178,7 @@ abstract final class QuranAyahSpanBuilder {
     required TextStyle baseStyle,
     required Color baseColor,
     required Color? highlightBg,
-    required TapGestureRecognizer recognizer,
+    required GestureRecognizer recognizer,
   }) {
     if (marks.isEmpty) {
       return [
