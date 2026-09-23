@@ -228,10 +228,10 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
 
     final groups = _groupBySurah(_ayahs);
     double minF = 12.0;
-    double maxF = 65.0;
+    double maxF = 120.0;
     double bestF = widget.fontSize;
 
-    for (int iter = 0; iter < 8; iter++) {
+    for (int iter = 0; iter < 10; iter++) {
       final testFont = (minF + maxF) / 2;
       double totalH = 40.0;
 
@@ -255,6 +255,7 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
             showTajweed: widget.showTajweed,
             fontFamily: widget.fontFamily,
             fontFamilyFallback: widget.fontFamilyFallback,
+            lineHeight: 1.55,
           ),
         );
 

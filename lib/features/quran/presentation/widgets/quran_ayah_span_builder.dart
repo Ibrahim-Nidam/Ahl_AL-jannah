@@ -115,6 +115,7 @@ abstract final class QuranAyahSpanBuilder {
     bool showTajweed = false,
     String fontFamily = 'Lateef',
     List<String> fontFamilyFallback = const ['Noto Naskh Arabic', 'Scheherazade New', 'Arial'],
+    double lineHeight = 1.55,
   }) {
     final spans = <InlineSpan>[];
 
@@ -136,7 +137,7 @@ abstract final class QuranAyahSpanBuilder {
         fontSize: fontSize,
         fontFamily: fontFamily,
         fontFamilyFallback: fontFamilyFallback,
-      );
+      ).copyWith(height: lineHeight);
 
       spans.addAll(
         _buildAyahTextSpans(

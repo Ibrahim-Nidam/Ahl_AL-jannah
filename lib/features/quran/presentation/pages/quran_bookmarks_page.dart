@@ -42,8 +42,8 @@ class _QuranBookmarksPageState extends State<QuranBookmarksPage>
   /// Loaded asynchronously after bookmarks are fetched.
   Map<int, ({int juz, int hizb})> _pageMetadata = const {};
 
-  /// Tracks which ayah bookmark card is currently expanded.
-  String? _expandedAyahId;
+  /// Tracks which surah group is currently expanded in Tab 2.
+  int? _expandedSurahId;
 
   QuranRiwaya _activeRiwaya() {
     final state = getIt<SettingsCubit>().state;
@@ -258,13 +258,15 @@ class _QuranBookmarksPageState extends State<QuranBookmarksPage>
     final pageBookmarks = _bookmarks.where((b) => b.isPageBookmark).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    // 2. Sort Ayah Bookmarks: grouped by surah (asc), then by ayah number (asc)
-    final ayahBookmarks = _bookmarks.where((b) => b.isAyahBookmark).toList()
-      ..sort((a, b) {
-        final surahCompare = a.surahId.compareTo(b.surahId);
-        if (surahCompare != 0) return surahCompare;
-        return (a.ayahNumber ?? 0).compareTo(b.ayahNumber ?? 0);
-      });
+    // 2. Group Ayah Bookmarks by Surah
+    final Map<int, List<QuranBookmark>> groupedAyahBookmarks = {};
+    for (final b in _bookmarks.where((b) => b.isAyahBookmark)) {
+      groupedAyahBookmarks.putIfAbsent(b.surahId, () => []).add(b);
+    }
+    for (final list in groupedAyahBookmarks.values) {
+      list.sort((a, b) => (a.ayahNumber ?? 0).compareTo(b.ayahNumber ?? 0));
+    }
+    final surahIds = groupedAyahBookmarks.keys.toList()..sort();
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -291,28 +293,31 @@ class _QuranBookmarksPageState extends State<QuranBookmarksPage>
                   },
                 ),
 
-          // ── Tab 2: Ayahs ──
-          ayahBookmarks.isEmpty
+          // ── Tab 2: Ayahs (Grouped by Surah, collapsed by default) ──
+          groupedAyahBookmarks.isEmpty
               ? _buildEmptyTab(l10n.quranNoAyahBookmarks, isDark)
               : ListView.builder(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
-                  itemCount: ayahBookmarks.length,
+                  itemCount: surahIds.length,
                   itemBuilder: (context, index) {
-                    final bookmark = ayahBookmarks[index];
-                    final isExpanded = _expandedAyahId == bookmark.id;
-                    return _AyahBookmarkTile(
-                      bookmark: bookmark,
+                    final surahId = surahIds[index];
+                    final bookmarks = groupedAyahBookmarks[surahId]!;
+                    final isExpanded = _expandedSurahId == surahId;
+                    return _SurahAyahGroupTile(
+                      surahId: surahId,
+                      surahNameEn: bookmarks.first.surahName,
+                      arabicName: _arabicName(surahId),
+                      bookmarks: bookmarks,
                       isDark: isDark,
-                      arabicName: _arabicName(bookmark.surahId),
                       isExpanded: isExpanded,
                       onToggle: () {
                         setState(() {
-                          _expandedAyahId = isExpanded ? null : bookmark.id;
+                          _expandedSurahId = isExpanded ? null : surahId;
                         });
                       },
-                      onDelete: () => _delete(bookmark),
-                      onOpen: () => _openReaderFor(bookmark),
+                      onDeleteBookmark: _delete,
+                      onOpenBookmark: _openReaderFor,
                     );
                   },
                 ),
@@ -460,21 +465,141 @@ class _PageBookmarkTile extends StatelessWidget {
 // Ayah Bookmark Tile — collapsed by default, expandable per card
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _AyahBookmarkTile extends StatelessWidget {
-  final QuranBookmark bookmark;
-  final bool isDark;
+// ─────────────────────────────────────────────────────────────────────────────
+// Surah Ayah Group Tile — grouped by surah, collapsed by default
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SurahAyahGroupTile extends StatelessWidget {
+  final int surahId;
+  final String surahNameEn;
   final String arabicName;
+  final List<QuranBookmark> bookmarks;
+  final bool isDark;
   final bool isExpanded;
   final VoidCallback onToggle;
+  final Function(QuranBookmark) onDeleteBookmark;
+  final Function(QuranBookmark) onOpenBookmark;
+
+  const _SurahAyahGroupTile({
+    required this.surahId,
+    required this.surahNameEn,
+    required this.arabicName,
+    required this.bookmarks,
+    required this.isDark,
+    required this.isExpanded,
+    required this.onToggle,
+    required this.onDeleteBookmark,
+    required this.onOpenBookmark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    // Header: "Arabic Name • English Name"
+    final titleText = arabicName.isNotEmpty
+        ? '$arabicName • $surahNameEn'
+        : surahNameEn;
+
+    final countText = l10n.quranSavedVersesCount(bookmarks.length);
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      color: isDark ? AppColors.cardDark : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDark
+              ? AppColors.dividerDark
+              : AppColors.divider.withAlpha(60),
+        ),
+      ),
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          // ── Collapsed surah header ──
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 4,
+            ),
+            title: Text(
+              titleText,
+              style: AppTextStyles.bodyMedium.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryGreen,
+              ),
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Text(
+                countText,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.accentGoldDark,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            trailing: AnimatedRotation(
+              turns: isExpanded ? 0.5 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: Icon(
+                Icons.expand_more_rounded,
+                size: 24,
+                color: isDark
+                    ? AppColors.onSurfaceDarkVariant
+                    : AppColors.onSurfaceLightVariant,
+              ),
+            ),
+            onTap: onToggle,
+          ),
+
+          // ── Expanded list of saved ayahs ──
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Column(
+              children: [
+                const Divider(height: 1),
+                for (int i = 0; i < bookmarks.length; i++) ...[
+                  if (i > 0)
+                    Divider(
+                      height: 1,
+                      indent: 16,
+                      endIndent: 16,
+                      color: isDark
+                          ? AppColors.dividerDark.withAlpha(50)
+                          : AppColors.divider.withAlpha(40),
+                    ),
+                  _AyahBookmarkSubItem(
+                    bookmark: bookmarks[i],
+                    isDark: isDark,
+                    onDelete: () => onDeleteBookmark(bookmarks[i]),
+                    onOpen: () => onOpenBookmark(bookmarks[i]),
+                  ),
+                ],
+              ],
+            ),
+            crossFadeState: isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 250),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AyahBookmarkSubItem extends StatelessWidget {
+  final QuranBookmark bookmark;
+  final bool isDark;
   final VoidCallback onDelete;
   final VoidCallback onOpen;
 
-  const _AyahBookmarkTile({
+  const _AyahBookmarkSubItem({
     required this.bookmark,
     required this.isDark,
-    required this.arabicName,
-    required this.isExpanded,
-    required this.onToggle,
     required this.onDelete,
     required this.onOpen,
   });
@@ -483,147 +608,102 @@ class _AyahBookmarkTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
-    // Header: "Arabic Name • Ayah X:Y"
     final ayahLabel = l10n.quranAyahBookmarkLabel(
       bookmark.surahId,
       bookmark.ayahNumber ?? 0,
     );
-    final headerText = arabicName.isNotEmpty
-        ? '$arabicName • $ayahLabel'
-        : '${bookmark.surahName} • $ayahLabel';
 
     return Dismissible(
       key: ValueKey(bookmark.id),
       direction: DismissDirection.endToStart,
       background: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        color: AppColors.error.withAlpha(200),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         alignment: Alignment.centerRight,
-        decoration: BoxDecoration(
-          color: AppColors.error.withAlpha(220),
-          borderRadius: BorderRadius.circular(16),
-        ),
         child: const Icon(
-          Icons.delete_sweep_rounded,
+          Icons.delete_rounded,
           color: Colors.white,
-          size: 28,
+          size: 22,
         ),
       ),
       onDismissed: (_) => onDelete(),
-      child: Card(
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        color: isDark ? AppColors.cardDark : Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: isDark
-                ? AppColors.dividerDark
-                : AppColors.divider.withAlpha(60),
-          ),
-        ),
-        elevation: 0,
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          children: [
-            // ── Collapsed header (always visible) ──
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 4,
-              ),
-              title: Text(
-                headerText,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primaryGreen,
-                ),
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 4.0),
-                child: Text(
-                  '${bookmark.surahName} • ${l10n.quranPageLabel(bookmark.page)}',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.accentGoldDark,
-                  ),
-                ),
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
+      child: InkWell(
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    _formatDate(bookmark.createdAt),
-                    style: AppTextStyles.caption.copyWith(
-                      color: isDark
-                          ? AppColors.onSurfaceDarkVariant
-                          : AppColors.onSurfaceLightVariant,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGreen.withAlpha(25),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$ayahLabel • ${l10n.quranPageLabel(bookmark.page)}',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.primaryGreen,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  AnimatedRotation(
-                    turns: isExpanded ? 0.5 : 0.0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      Icons.expand_more_rounded,
-                      size: 22,
-                      color: isDark
-                          ? AppColors.onSurfaceDarkVariant
-                          : AppColors.onSurfaceLightVariant,
+                  IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      size: 20,
+                      color: AppColors.error,
                     ),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onDelete,
+                    tooltip: 'Delete bookmark',
                   ),
                 ],
               ),
-              onTap: onToggle,
-            ),
-
-            // ── Expanded content ──
-            AnimatedCrossFade(
-              firstChild: const SizedBox.shrink(),
-              secondChild: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+              const SizedBox(height: 8),
+              Text(
+                bookmark.previewText,
+                style: AppTextStyles.arabicBody(fontSize: 16).copyWith(
+                  color: isDark ? Colors.white70 : Colors.black87,
+                  height: 1.6,
+                ),
+                textDirection: TextDirection.rtl,
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Divider(height: 1),
-                    const SizedBox(height: 10),
                     Text(
-                      bookmark.previewText,
-                      style: AppTextStyles.arabicBody(fontSize: 16).copyWith(
-                        color: isDark ? Colors.white70 : Colors.black87,
-                        height: 1.6,
+                      l10n.commonContinue,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.primaryGreen,
+                        fontWeight: FontWeight.bold,
                       ),
-                      textDirection: TextDirection.rtl,
                     ),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: AlignmentDirectional.centerEnd,
-                      child: TextButton.icon(
-                        onPressed: onOpen,
-                        icon: const Icon(
-                          Icons.open_in_new_rounded,
-                          size: 16,
-                        ),
-                        label: Text(l10n.commonContinue),
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.primaryGreen,
-                          textStyle: AppTextStyles.bodySmall.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 12,
+                      color: AppColors.primaryGreen,
                     ),
                   ],
                 ),
               ),
-              crossFadeState: isExpanded
-                  ? CrossFadeState.showSecond
-                  : CrossFadeState.showFirst,
-              duration: const Duration(milliseconds: 250),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+}
 
   String _formatDate(DateTime dateTime) {
     return '${dateTime.month}/${dateTime.day}';
