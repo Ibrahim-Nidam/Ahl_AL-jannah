@@ -294,6 +294,19 @@ class _QuranPageState extends State<QuranPage>
         final position = snapshot.data;
         if (position == null) return const SizedBox.shrink();
 
+        // Resolve Arabic surah name from the loaded surahs list.
+        String nameAr = '';
+        final cubitState = _cubit.state;
+        if (cubitState is QuranLoadSuccess) {
+          final match = cubitState.surahs.where(
+            (s) => s.id == position.surahId,
+          );
+          if (match.isNotEmpty) nameAr = match.first.nameAr;
+        }
+        final displayName = nameAr.isNotEmpty
+            ? '${position.surahName} • $nameAr'
+            : position.surahName;
+
         return Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
           child: Material(
@@ -343,7 +356,7 @@ class _QuranPageState extends State<QuranPage>
                           Text(
                             l10n.quranPageDotSurah(
                               position.page,
-                              position.surahName,
+                              displayName,
                             ),
                             style: AppTextStyles.bodyLarge.copyWith(
                               color: Colors.white,

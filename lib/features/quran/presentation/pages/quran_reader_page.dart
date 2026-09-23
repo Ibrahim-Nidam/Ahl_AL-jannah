@@ -1236,7 +1236,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
             fontFamily: quranFont.fontFamily,
             fontFamilyFallback: quranFont.fontFamilyFallback,
             warsh: _isWarsh,
-            autoFit: _autoFitMode > 0,
+            autoFit:
+                _autoFitMode == 2 ||
+                (_autoFitMode == 1 && pageNum == _currentPageNumber),
             targetAyahNumber:
                 (pageNum == widget.page || pageNum == _selectedAyah?.page)
                 ? widget.initialAyahId

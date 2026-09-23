@@ -219,17 +219,19 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
     );
   }
 
+  static final _dummyRecognizer = TapGestureRecognizer();
+
   double _computeOptimalFontSize(double availWidth, double availHeight) {
     if (_ayahs.isEmpty || availHeight <= 100 || availWidth <= 100) {
       return widget.fontSize;
     }
 
     final groups = _groupBySurah(_ayahs);
-    double minF = 14.0;
-    double maxF = 38.0;
+    double minF = 12.0;
+    double maxF = 65.0;
     double bestF = widget.fontSize;
 
-    for (int iter = 0; iter < 6; iter++) {
+    for (int iter = 0; iter < 8; iter++) {
       final testFont = (minF + maxF) / 2;
       double totalH = 40.0;
 
@@ -249,7 +251,7 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
             accentColor: AppColors.accentGold,
             selectedAyah: null,
             bookmarkedAyahKeys: const {},
-            recognizerFor: (a) => LongPressGestureRecognizer(),
+            recognizerFor: (_) => _dummyRecognizer,
             showTajweed: widget.showTajweed,
             fontFamily: widget.fontFamily,
             fontFamilyFallback: widget.fontFamilyFallback,
