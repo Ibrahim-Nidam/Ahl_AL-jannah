@@ -704,8 +704,3 @@ class _AyahBookmarkSubItem extends StatelessWidget {
     );
   }
 }
-
-  String _formatDate(DateTime dateTime) {
-    return '${dateTime.month}/${dateTime.day}';
-  }
-}
