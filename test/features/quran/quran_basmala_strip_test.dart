@@ -20,7 +20,7 @@ void main() {
       final text =
           'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ يَـٰٓأَيُّهَا ٱلنَّاسُ ٱتَّقُو';
       final result = QuranAyahSpanBuilder.formatAyahText(4, 1, text);
-      expect(result.startsWith('يَـٰٓأَيُّهَا'), isTrue);
+      expect(result.startsWith(QuranAyahSpanBuilder.stripUnnaturalTajweedMarks('يَـٰٓأَيُّهَا')), isTrue);
       expect(result.contains('بِسْمِ'), isFalse);
     });
 

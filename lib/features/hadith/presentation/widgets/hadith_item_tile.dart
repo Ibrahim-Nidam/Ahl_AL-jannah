@@ -1,6 +1,7 @@
 import 'package:ahl_jannah/features/settings/presentation/bloc/settings_cubit.dart';
 import 'package:ahl_jannah/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -23,6 +24,40 @@ class HadithItemTile extends StatefulWidget {
 
 class _HadithItemTileState extends State<HadithItemTile> {
   bool _showTranslation = false;
+
+  void _copyHadith(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final hadith = widget.hadith;
+    final cleanArabic = QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(hadith.arabic);
+
+    final sourceRef = hadith.grade.isNotEmpty
+        ? hadith.grade
+        : (hadith.book.isNotEmpty ? hadith.book : hadith.reference);
+
+    final StringBuffer buffer = StringBuffer();
+    buffer.writeln(cleanArabic);
+
+    if (_showTranslation && hadith.english.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln(hadith.english);
+    }
+
+    if (sourceRef.isNotEmpty) {
+      buffer.writeln();
+      buffer.write('- المصدر: $sourceRef');
+    }
+
+    Clipboard.setData(ClipboardData(text: buffer.toString()));
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.quranVerseCopied),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,27 +137,38 @@ class _HadithItemTileState extends State<HadithItemTile> {
             ),
           ),
           const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () =>
-                  setState(() => _showTranslation = !_showTranslation),
-              icon: Icon(
-                _showTranslation
-                    ? Icons.visibility_off_rounded
-                    : Icons.translate_rounded,
-                size: 18,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              TextButton.icon(
+                onPressed: () =>
+                    setState(() => _showTranslation = !_showTranslation),
+                icon: Icon(
+                  _showTranslation
+                      ? Icons.visibility_off_rounded
+                      : Icons.translate_rounded,
+                  size: 18,
+                ),
+                label: Text(
+                  _showTranslation
+                      ? l10n.hadithHideTranslation
+                      : l10n.hadithShowTranslation,
+                ),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  foregroundColor: colorScheme.primary,
+                ),
               ),
-              label: Text(
-                _showTranslation
-                    ? l10n.hadithHideTranslation
-                    : l10n.hadithShowTranslation,
+              IconButton(
+                onPressed: () => _copyHadith(context),
+                icon: const Icon(Icons.copy_rounded, size: 18),
+                tooltip: l10n.commonCopy,
+                style: IconButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  foregroundColor: colorScheme.primary,
+                ),
               ),
-              style: TextButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                foregroundColor: colorScheme.primary,
-              ),
-            ),
+            ],
           ),
           if (_showTranslation) ...[
             const Divider(height: 12),

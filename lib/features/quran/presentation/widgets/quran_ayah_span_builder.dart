@@ -31,11 +31,11 @@ abstract final class QuranAyahSpanBuilder {
   /// 2:5), which is not part of the actual Mushaf text.
   static final _unnaturalMarksRe = RegExp('[\u06DF\u06E0]');
 
-  /// Removes the artificial "dot" marks (U+06DF/U+06E0) that are not part
-  /// of the printed Mushaf, so previews, search results and shared text
-  /// never carry them.
-  static String stripUnnaturalTajweedMarks(String text) =>
-      text.replaceAll(_unnaturalMarksRe, '');
+  /// Removes artificial marks (U+06DF/U+06E0) and tatweel (U+0640) embedded
+  /// in Hafs text before superscript alef (U+0670) which shift alef positioning.
+  static String stripUnnaturalTajweedMarks(String text) {
+    return text.replaceAll(_unnaturalMarksRe, '').replaceAll('\u0640', '');
+  }
 
   /// The Bismillah base consonants (no diacritics) to match against.
   static const _bismillahBase = 'بسم الله الرحمن الرحيم';

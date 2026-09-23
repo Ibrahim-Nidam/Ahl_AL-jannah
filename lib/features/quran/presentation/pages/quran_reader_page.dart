@@ -3,6 +3,7 @@ import 'package:ahl_jannah/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -85,6 +86,31 @@ class _QuranReaderPageState extends State<QuranReaderPage>
   bool _showTajweed = false;
   String _translationLang = 'en';
   String _readerMode = 'mushaf';
+
+  // 2-Phase Auto-fit screen mode state:
+  // 0 = Disabled, 1 = Fit current page only, 2 = Fit all pages in reading session
+  int _autoFitMode = 0;
+  int? _autoFitPageNumber;
+
+  void _toggleAutoFitMode() {
+    setState(() {
+      if (_autoFitMode == 0) {
+        _autoFitMode = 1;
+        _autoFitPageNumber = _currentPageNumber;
+      } else if (_autoFitMode == 1) {
+        _autoFitMode = 2;
+      } else {
+        _autoFitMode = 0;
+      }
+    });
+    if (_autoFitMode == 1) {
+      _showCustomToast('Screen fit enabled (Current page)');
+    } else if (_autoFitMode == 2) {
+      _showCustomToast('Screen fit enabled (Session-wide)');
+    } else {
+      _showCustomToast('Screen fit disabled');
+    }
+  }
 
   // Two-finger pinch zoom state. The override lives only on this page's
   // local [_fontSize]; it is never persisted and is reset to the saved
@@ -523,32 +549,42 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     final ayah = _selectedAyah;
     if (ayah == null) return;
     final l10n = AppLocalizations.of(context);
-    final surah = _getSurahEntity(ayah.surahId);
-    final translationText = _translationLang == 'fr'
-        ? ayah.translationFr
-        : ayah.translationEn;
     final textToCopy =
-        '${surah.nameEn} ${ayah.surahId}:${ayah.number}\n\n'
-        '${QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(ayah.textAr)}\n\n${translationText ?? ""}';
+        QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(ayah.textAr);
     Clipboard.setData(ClipboardData(text: textToCopy));
     _showCustomToast(l10n.quranVerseCopied);
     setState(() => _selectedAyah = null);
   }
 
-  void _shareSelectedAyah() {
+  void _shareSelectedAyah() async {
     final ayah = _selectedAyah;
     if (ayah == null) return;
     final l10n = AppLocalizations.of(context);
     final surah = _getSurahEntity(ayah.surahId);
-    final translationText = _translationLang == 'fr'
-        ? ayah.translationFr
-        : ayah.translationEn;
-    final shareText =
-        '✨ *${l10n.quranShareQuoteTitle}* ✨\n\n'
-        '📖 *${surah.nameEn}* (${ayah.surahId}:${ayah.number})\n\n'
-        '« ${QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(ayah.textAr)} »\n\n${translationText ?? ""}\n\n${l10n.quranShareViaApp}';
-    Clipboard.setData(ClipboardData(text: shareText));
-    _showCustomToast(l10n.quranVerseShareReady);
+    final cleanArabic = QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(ayah.textAr);
+
+    final StringBuffer buffer = StringBuffer();
+    buffer.writeln('📖 سورة ${surah.nameAr.isNotEmpty ? surah.nameAr : surah.nameEn} (${surah.nameEn}) - ${l10n.quranVerseLabel(ayah.surahId, ayah.number)}');
+    buffer.writeln();
+    buffer.writeln('« $cleanArabic »');
+
+    if (ayah.translationEn != null && ayah.translationEn!.trim().isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('🇬🇧 EN: ${ayah.translationEn!.trim()}');
+    }
+    if (ayah.translationFr != null && ayah.translationFr!.trim().isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('🇫🇷 FR: ${ayah.translationFr!.trim()}');
+    }
+
+    final shareText = buffer.toString();
+
+    try {
+      await Share.share(shareText);
+    } catch (_) {
+      Clipboard.setData(ClipboardData(text: shareText));
+      _showCustomToast(l10n.quranVerseShareReady);
+    }
     setState(() => _selectedAyah = null);
   }
 
@@ -647,7 +683,10 @@ class _QuranReaderPageState extends State<QuranReaderPage>
           AppConstants.maxArabicFontSize,
         );
     if (nextSize != _fontSize) {
-      setState(() => _fontSize = nextSize);
+      setState(() {
+        _fontSize = nextSize;
+        _autoFitMode = 0;
+      });
     }
   }
 
@@ -1020,11 +1059,20 @@ class _QuranReaderPageState extends State<QuranReaderPage>
                 onPressed: _togglePageBookmark,
               ),
               IconButton(
-                icon: const Icon(Icons.bookmarks_rounded),
-                tooltip: l10n.quranManageBookmarks,
-                onPressed: () => context
-                    .pushNamed('quran_bookmarks')
-                    .then((_) => _loadBookmarks()),
+                icon: Icon(
+                  _autoFitMode == 0
+                      ? Icons.aspect_ratio_rounded
+                      : (_autoFitMode == 1
+                          ? Icons.fit_screen_outlined
+                          : Icons.fit_screen_rounded),
+                  color: _autoFitMode > 0 ? AppColors.accentGold : null,
+                ),
+                tooltip: _autoFitMode == 0
+                    ? 'Fit page to screen'
+                    : (_autoFitMode == 1
+                        ? 'Fit all pages to screen'
+                        : 'Disable screen fit'),
+                onPressed: _toggleAutoFitMode,
               ),
               IconButton(
                 icon: const Icon(Icons.text_fields_rounded),
@@ -1136,6 +1184,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       _currentPageNumber = pageNum;
       _selectedAyah = null;
       _lastKnownScrollOffset = null;
+      if (_autoFitMode == 1 && _autoFitPageNumber != pageNum) {
+        _autoFitMode = 0;
+      }
     });
     _canPersistPosition = true;
     unawaited(_saveLastPosition());
@@ -1152,7 +1203,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
       }
     } catch (e) {
       debugPrint(
-        '[QuranReader] Failed to fetch metadata for page \$pageNum: \$e',
+        '[QuranReader] Failed to fetch metadata for page $pageNum: $e',
       );
     }
   }
@@ -1185,6 +1236,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
             fontFamily: quranFont.fontFamily,
             fontFamilyFallback: quranFont.fontFamilyFallback,
             warsh: _isWarsh,
+            autoFit: _autoFitMode > 0,
             targetAyahNumber:
                 (pageNum == widget.page || pageNum == _selectedAyah?.page)
                 ? widget.initialAyahId

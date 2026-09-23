@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:ahl_jannah/core/theme/app_colors.dart';
 import 'package:ahl_jannah/core/theme/app_text_styles.dart';
 import 'package:ahl_jannah/l10n/generated/app_localizations.dart';
 
+import '../../../quran/presentation/widgets/quran_ayah_span_builder.dart';
 import '../../domain/entities/adhkar_entities.dart';
 import 'adhkar_repetition_counter.dart';
 
@@ -447,12 +449,21 @@ class _DhikrSlide extends StatelessWidget {
                       ),
                     ],
                     const SizedBox(height: 16),
-                    Center(
-                      child: FilledButton.tonalIcon(
-                        onPressed: onAddToTasbeeh,
-                        icon: const Icon(Icons.fingerprint_rounded, size: 20),
-                        label: Text(l10n.tasbeehAddAndOpen),
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        FilledButton.tonalIcon(
+                          onPressed: onAddToTasbeeh,
+                          icon: const Icon(Icons.fingerprint_rounded, size: 20),
+                          label: Text(l10n.tasbeehAddAndOpen),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filledTonal(
+                          onPressed: () => _copyDhikr(context),
+                          icon: const Icon(Icons.copy_rounded, size: 20),
+                          tooltip: l10n.commonCopy,
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -467,6 +478,59 @@ class _DhikrSlide extends StatelessWidget {
             onReset: onReset,
           ),
         ],
+      ),
+    );
+  }
+
+  void _copyDhikr(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final lang = Localizations.localeOf(context).languageCode;
+    final StringBuffer buffer = StringBuffer();
+
+    final cleanArabic = QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(item.arabic);
+    buffer.writeln(cleanArabic);
+
+    if (item.transliteration.trim().isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln(item.transliteration.trim());
+    }
+
+    final metaList = <String>[];
+    if (item.reference.trim().isNotEmpty) {
+      metaList.add('${l10n.adhkarReferenceLabel}: ${item.reference.trim()}');
+    }
+    if (item.authenticity.trim().isNotEmpty) {
+      metaList.add('${l10n.adhkarAuthenticityLabel}: ${item.authenticity.trim()}');
+    }
+    if (item.narrator.trim().isNotEmpty) {
+      metaList.add('${l10n.adhkarNarratorLabel}: ${item.narrator.trim()}');
+    }
+    if (item.book.trim().isNotEmpty) {
+      metaList.add('${l10n.adhkarBookLabel}: ${item.book.trim()}');
+    }
+    if (item.hadithNumber.trim().isNotEmpty) {
+      metaList.add('${l10n.adhkarHadithNumberLabel}: ${item.hadithNumber.trim()}');
+    }
+
+    if (metaList.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln(metaList.join('\n'));
+    }
+
+    final benefit = item.benefitsForLocale(lang).trim();
+    if (benefit.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('${l10n.adhkarBenefitsLabel}: $benefit');
+    }
+
+    Clipboard.setData(ClipboardData(text: buffer.toString()));
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.quranVerseCopied),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
       ),
     );
   }

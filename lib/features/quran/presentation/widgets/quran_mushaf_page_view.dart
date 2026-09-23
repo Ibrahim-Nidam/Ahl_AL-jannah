@@ -45,6 +45,7 @@ class QuranMushafPageView extends StatefulWidget {
   final String fontFamily;
   final List<String> fontFamilyFallback;
   final bool warsh;
+  final bool autoFit;
 
   const QuranMushafPageView({
     super.key,
@@ -67,6 +68,7 @@ class QuranMushafPageView extends StatefulWidget {
       'Arial',
     ],
     this.warsh = false,
+    this.autoFit = false,
   });
 
   @override
@@ -217,57 +219,120 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
     );
   }
 
+  double _computeOptimalFontSize(double availWidth, double availHeight) {
+    if (_ayahs.isEmpty || availHeight <= 100 || availWidth <= 100) {
+      return widget.fontSize;
+    }
+
+    final groups = _groupBySurah(_ayahs);
+    double minF = 14.0;
+    double maxF = 38.0;
+    double bestF = widget.fontSize;
+
+    for (int iter = 0; iter < 6; iter++) {
+      final testFont = (minF + maxF) / 2;
+      double totalH = 40.0;
+
+      for (final group in groups) {
+        if (group.first.number == 1) {
+          totalH += 60.0;
+          if (group.first.surahId != 9) {
+            totalH += 45.0;
+          }
+        }
+
+        final span = TextSpan(
+          children: QuranAyahSpanBuilder.build(
+            ayahs: group,
+            fontSize: testFont,
+            quranTextColor: Colors.black,
+            accentColor: AppColors.accentGold,
+            selectedAyah: null,
+            bookmarkedAyahKeys: const {},
+            recognizerFor: (a) => LongPressGestureRecognizer(),
+            showTajweed: widget.showTajweed,
+            fontFamily: widget.fontFamily,
+            fontFamilyFallback: widget.fontFamilyFallback,
+          ),
+        );
+
+        final painter = TextPainter(
+          text: span,
+          textDirection: TextDirection.rtl,
+          textAlign: TextAlign.justify,
+          locale: const Locale('ar'),
+        );
+        painter.layout(maxWidth: (availWidth - 40.0).clamp(100.0, 10000.0));
+        totalH += painter.height + 12.0;
+      }
+
+      if (totalH <= availHeight) {
+        bestF = testFont;
+        minF = testFont;
+      } else {
+        maxF = testFont;
+      }
+    }
+
+    return bestF;
+  }
+
   Widget _buildMushafFlow(Color quranTextColor, Color accent) {
     final groups = _groupBySurah(_ayahs);
-    debugPrint(
-      '[MushafPage ${widget.pageNumber}] _buildMushafFlow: ${groups.length} surah groups, quranTextColor=$quranTextColor',
-    );
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final group in groups) ...[
-            if (group.first.number == 1) ...[
-              QuranInlineSurahHeader(
-                surah: _getSurahEntity(group.first.surahId),
-                accent: accent,
-                fontFamily: widget.fontFamily,
-                fontFamilyFallback: widget.fontFamilyFallback,
-              ),
-              if (group.first.surahId != 9)
-                QuranInlineBismillah(
-                  color: quranTextColor,
-                  fontFamily: widget.fontFamily,
-                  fontFamilyFallback: widget.fontFamilyFallback,
-                  warsh: widget.warsh,
-                ),
-            ],
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Text.rich(
-                TextSpan(
-                  children: QuranAyahSpanBuilder.build(
-                    ayahs: group,
-                    fontSize: widget.fontSize,
-                    quranTextColor: quranTextColor,
-                    accentColor: accent,
-                    selectedAyah: widget.selectedAyah,
-                    bookmarkedAyahKeys: widget.bookmarkedAyahKeys,
-                    recognizerFor: _getOrCreateRecognizer,
-                    showTajweed: widget.showTajweed,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final effectiveFontSize = widget.autoFit
+            ? _computeOptimalFontSize(constraints.maxWidth, constraints.maxHeight)
+            : widget.fontSize;
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final group in groups) ...[
+                if (group.first.number == 1) ...[
+                  QuranInlineSurahHeader(
+                    surah: _getSurahEntity(group.first.surahId),
+                    accent: accent,
                     fontFamily: widget.fontFamily,
                     fontFamilyFallback: widget.fontFamilyFallback,
                   ),
+                  if (group.first.surahId != 9)
+                    QuranInlineBismillah(
+                      color: quranTextColor,
+                      fontFamily: widget.fontFamily,
+                      fontFamilyFallback: widget.fontFamilyFallback,
+                      warsh: widget.warsh,
+                    ),
+                ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Text.rich(
+                    TextSpan(
+                      children: QuranAyahSpanBuilder.build(
+                        ayahs: group,
+                        fontSize: effectiveFontSize,
+                        quranTextColor: quranTextColor,
+                        accentColor: accent,
+                        selectedAyah: widget.selectedAyah,
+                        bookmarkedAyahKeys: widget.bookmarkedAyahKeys,
+                        recognizerFor: _getOrCreateRecognizer,
+                        showTajweed: widget.showTajweed,
+                        fontFamily: widget.fontFamily,
+                        fontFamilyFallback: widget.fontFamilyFallback,
+                      ),
+                    ),
+                    textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.justify,
+                    locale: const Locale('ar'),
+                  ),
                 ),
-                textDirection: TextDirection.rtl,
-                textAlign: TextAlign.justify,
-                locale: const Locale('ar'),
-              ),
-            ),
-          ],
-        ],
-      ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 
