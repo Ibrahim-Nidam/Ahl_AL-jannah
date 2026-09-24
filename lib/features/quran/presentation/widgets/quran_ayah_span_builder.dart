@@ -29,11 +29,12 @@ abstract final class QuranAyahSpanBuilder {
   /// upright rectangular zero (۠, U+06E0), plus invisible control chars.
   static final _unnaturalMarksRe = RegExp('[\u06DF\u06E0\u200F\u200E\u200B]');
 
-  /// Removes artificial zero marks (U+06DF/U+06E0) and control characters.
-  /// Tatweel (\u0640) MUST NOT be stripped because it is the Uthmani carrier
-  /// for hamza (ـٔ) and dagger alef (ـٰ) — stripping it causes missing letters.
-  static String stripUnnaturalTajweedMarks(String text) {
-    return text.replaceAll(_unnaturalMarksRe, '');
+  /// Removes artificial zero marks (U+06DF/U+06E0), control characters,
+  /// and artificial tatweel (\u0640) carriers embedded before dagger alef
+  /// which shift dagger alef positioning in Uthmanic Hafs fonts.
+  static String stripUnnaturalTajweedMarks(String text, {bool warsh = false}) {
+    final cleaned = text.replaceAll(_unnaturalMarksRe, '');
+    return warsh ? cleaned : cleaned.replaceAll('\u0640', '');
   }
 
   /// The Bismillah base consonants (no diacritics) to match against.
@@ -59,7 +60,7 @@ abstract final class QuranAyahSpanBuilder {
   ///
   /// Uses diacritic-stripping to match regardless of Unicode ordering
   /// differences between various Quran text encodings.
-  static String formatAyahText(int surahId, int number, String text) {
+  static String formatAyahText(int surahId, int number, String text, {bool warsh = false}) {
     if (surahId != 9 && number == 1) {
       // Strip diacritics and normalise all alef variants (ٱ/آ/أ/إ → ا) to
       // get a skeleton we can compare reliably.
@@ -95,12 +96,12 @@ abstract final class QuranAyahSpanBuilder {
           while (i < text.length && _diacriticsRe.hasMatch(text[i])) {
             i++;
           }
-          return stripUnnaturalTajweedMarks(text.substring(i).trim());
+          return stripUnnaturalTajweedMarks(text.substring(i).trim(), warsh: warsh);
         }
         debugPrint('[Basmala strip] surah=$surahId stripped="$stripped" match=${stripped.startsWith(_bismillahBase)}');
       }
     }
-    return stripUnnaturalTajweedMarks(text);
+    return stripUnnaturalTajweedMarks(text, warsh: warsh);
   }
 
   static List<InlineSpan> build({
@@ -115,11 +116,12 @@ abstract final class QuranAyahSpanBuilder {
     String fontFamily = 'Lateef',
     List<String> fontFamilyFallback = const ['Noto Naskh Arabic', 'Scheherazade New', 'Arial'],
     double lineHeight = 1.55,
+    bool warsh = false,
   }) {
     final spans = <InlineSpan>[];
 
     for (final ayah in ayahs) {
-      final formattedText = formatAyahText(ayah.surahId, ayah.number, ayah.textAr);
+      final formattedText = formatAyahText(ayah.surahId, ayah.number, ayah.textAr, warsh: warsh);
       final marks = showTajweed
           ? QuranTajweedAnalyzer.analyze(formattedText)
           : const <TajweedMark>[];

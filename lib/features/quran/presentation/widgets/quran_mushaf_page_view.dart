@@ -218,87 +218,12 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
         ..onLongPress = () => widget.onAyahTapped(ayah),
     );
   }
-
-  static final _dummyRecognizer = TapGestureRecognizer();
-  static final Map<String, double> _autoFitCache = {};
-
-  double _computeOptimalFontSize(double availWidth, double availHeight) {
-    if (_ayahs.isEmpty || availHeight <= 100 || availWidth <= 100) {
-      return widget.fontSize;
-    }
-
-    final cacheKey =
-        '${widget.pageNumber}_${availWidth.toInt()}_${availHeight.toInt()}_${widget.showTajweed}_${widget.fontFamily}_${widget.warsh}';
-    final cached = _autoFitCache[cacheKey];
-    if (cached != null) {
-      return cached;
-    }
-
-    final groups = _groupBySurah(_ayahs);
-    double minF = 12.0;
-    double maxF = 120.0;
-    double bestF = widget.fontSize;
-
-    for (int iter = 0; iter < 12; iter++) {
-      final testFont = (minF + maxF) / 2;
-      double totalH = 40.0; // 20px top + 20px bottom padding
-
-      for (final group in groups) {
-        if (group.first.number == 1) {
-          totalH += 81.0; // Surah Header exact height
-          if (group.first.surahId != 9) {
-            totalH += 59.0; // Bismillah Header exact height
-          }
-        }
-
-        final span = TextSpan(
-          children: QuranAyahSpanBuilder.build(
-            ayahs: group,
-            fontSize: testFont,
-            quranTextColor: Colors.black,
-            accentColor: AppColors.accentGold,
-            selectedAyah: null,
-            bookmarkedAyahKeys: const {},
-            recognizerFor: (_) => _dummyRecognizer,
-            showTajweed: widget.showTajweed,
-            fontFamily: widget.fontFamily,
-            fontFamilyFallback: widget.fontFamilyFallback,
-            lineHeight: 1.55,
-          ),
-        );
-
-        final painter = TextPainter(
-          text: span,
-          textDirection: TextDirection.rtl,
-          textAlign: TextAlign.justify,
-          locale: const Locale('ar'),
-        );
-        painter.layout(maxWidth: (availWidth - 40.0).clamp(100.0, 10000.0));
-        totalH += painter.height + 12.0;
-      }
-
-      if (totalH <= availHeight) {
-        bestF = testFont;
-        minF = testFont;
-      } else {
-        maxF = testFont;
-      }
-    }
-
-    _autoFitCache[cacheKey] = bestF;
-    return bestF;
-  }
-
   Widget _buildMushafFlow(Color quranTextColor, Color accent) {
     final groups = _groupBySurah(_ayahs);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final effectiveFontSize = widget.autoFit
-            ? _computeOptimalFontSize(constraints.maxWidth, constraints.maxHeight)
-            : widget.fontSize;
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        final content = SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -324,7 +249,7 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
                     TextSpan(
                       children: QuranAyahSpanBuilder.build(
                         ayahs: group,
-                        fontSize: effectiveFontSize,
+                        fontSize: widget.fontSize,
                         quranTextColor: quranTextColor,
                         accentColor: accent,
                         selectedAyah: widget.selectedAyah,
@@ -333,6 +258,7 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
                         showTajweed: widget.showTajweed,
                         fontFamily: widget.fontFamily,
                         fontFamilyFallback: widget.fontFamilyFallback,
+                        warsh: widget.warsh,
                       ),
                     ),
                     textDirection: TextDirection.rtl,
@@ -342,6 +268,19 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
                 ),
               ],
             ],
+          ),
+        );
+
+        if (!widget.autoFit) {
+          return content;
+        }
+
+        return FittedBox(
+          fit: BoxFit.contain,
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: constraints.maxWidth,
+            child: content,
           ),
         );
       },

@@ -367,7 +367,7 @@ class _PageBookmarkTile extends StatelessWidget {
 
     final isArabic = l10n.localeName == 'ar';
     final nameDisplay = isArabic
-        ? (arabicName.isNotEmpty ? 'سورة $arabicName' : bookmark.surahName)
+        ? (arabicName.isNotEmpty ? arabicName : bookmark.surahName)
         : (arabicName.isNotEmpty
             ? '${bookmark.surahName} ($arabicName)'
             : bookmark.surahName);
@@ -500,7 +500,7 @@ class _SurahAyahGroupTile extends StatelessWidget {
 
     final isArabic = l10n.localeName == 'ar';
     final titleText = isArabic
-        ? (arabicName.isNotEmpty ? 'سورة $arabicName' : surahNameEn)
+        ? (arabicName.isNotEmpty ? arabicName : surahNameEn)
         : (arabicName.isNotEmpty
             ? '$surahNameEn ($arabicName)'
             : surahNameEn);

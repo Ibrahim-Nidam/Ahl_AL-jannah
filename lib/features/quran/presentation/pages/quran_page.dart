@@ -247,7 +247,7 @@ class _QuranPageState extends State<QuranPage>
                         final isArabic = l10n.localeName == 'ar';
                         final nameDisplay = isArabic
                             ? (item.surahNameAr.isNotEmpty
-                                ? 'سورة ${item.surahNameAr}'
+                                ? item.surahNameAr
                                 : item.surahNameEn)
                             : (item.surahNameAr.isNotEmpty
                                 ? '${item.surahNameEn} (${item.surahNameAr})'
@@ -448,7 +448,7 @@ class _QuranPageState extends State<QuranPage>
         }
         final isArabic = l10n.localeName == 'ar';
         final displayName = isArabic
-            ? (nameAr.isNotEmpty ? 'سورة $nameAr' : position.surahName)
+            ? (nameAr.isNotEmpty ? nameAr : position.surahName)
             : (nameAr.isNotEmpty
                 ? '${position.surahName} ($nameAr)'
                 : position.surahName);
