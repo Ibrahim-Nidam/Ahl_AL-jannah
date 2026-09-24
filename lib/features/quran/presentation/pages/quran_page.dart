@@ -209,7 +209,7 @@ class _QuranPageState extends State<QuranPage>
                     const SizedBox(width: 8),
                     Text(
                       l10n.quranReadingHistoryTitle,
-                      style: AppTextStyles.arabicHeading(fontSize: 18).copyWith(
+                      style: AppTextStyles.headingSmall.copyWith(
                         color: isDark
                             ? AppColors.onSurfaceDark
                             : AppColors.onSurfaceLight,
@@ -244,9 +244,14 @@ class _QuranPageState extends State<QuranPage>
                       ),
                       itemBuilder: (context, index) {
                         final item = historyItems[index];
-                        final nameDisplay = item.surahNameAr.isNotEmpty
-                            ? '${item.surahNameAr} • ${item.surahNameEn}'
-                            : item.surahNameEn;
+                        final isArabic = l10n.localeName == 'ar';
+                        final nameDisplay = isArabic
+                            ? (item.surahNameAr.isNotEmpty
+                                ? 'سورة ${item.surahNameAr}'
+                                : item.surahNameEn)
+                            : (item.surahNameAr.isNotEmpty
+                                ? '${item.surahNameEn} (${item.surahNameAr})'
+                                : item.surahNameEn);
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 4,
@@ -311,7 +316,7 @@ class _QuranPageState extends State<QuranPage>
         child: Scaffold(
           appBar: AppBar(
             title: Text(l10n.navQuran),
-            titleTextStyle: AppTextStyles.arabicHeading(fontSize: 22).copyWith(
+            titleTextStyle: AppTextStyles.headingMedium.copyWith(
               color: isDark
                   ? AppColors.onSurfaceDark
                   : AppColors.onSurfaceLight,
@@ -441,9 +446,12 @@ class _QuranPageState extends State<QuranPage>
           );
           if (match.isNotEmpty) nameAr = match.first.nameAr;
         }
-        final displayName = nameAr.isNotEmpty
-            ? '${position.surahName} • $nameAr'
-            : position.surahName;
+        final isArabic = l10n.localeName == 'ar';
+        final displayName = isArabic
+            ? (nameAr.isNotEmpty ? 'سورة $nameAr' : position.surahName)
+            : (nameAr.isNotEmpty
+                ? '${position.surahName} ($nameAr)'
+                : position.surahName);
 
         return Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),

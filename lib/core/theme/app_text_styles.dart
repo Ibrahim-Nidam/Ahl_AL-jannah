@@ -67,16 +67,14 @@ abstract final class AppTextStyles {
   /// Bold Arabic text for surah names and headings.
   static TextStyle arabicHeading({
     double fontSize = 24,
-    String fontFamily = 'Lateef',
+    String? fontFamily,
     List<String> fontFamilyFallback = _defaultArabicFallback,
   }) => TextStyle(
     fontFamily: fontFamily,
     fontFamilyFallback: fontFamilyFallback,
     fontSize: fontSize,
-    height: 1.6,
+    height: 1.5,
     fontWeight: FontWeight.w700,
-    locale: const Locale('ar'),
-    fontFeatures: _arabicFontFeatures,
   );
 
   // ── Latin / Translation Styles ──

@@ -163,7 +163,7 @@ class _QuranBookmarksPageState extends State<QuranBookmarksPage>
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.quranBookmarksTitle),
-        titleTextStyle: AppTextStyles.arabicHeading(fontSize: 20).copyWith(
+        titleTextStyle: AppTextStyles.headingMedium.copyWith(
           color: isDark ? AppColors.onSurfaceDark : AppColors.onSurfaceLight,
         ),
         bottom: TabBar(
@@ -365,10 +365,12 @@ class _PageBookmarkTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
-    // Build rich subtitle: "Arabic Name • English Name"
-    final nameDisplay = arabicName.isNotEmpty
-        ? '$arabicName • ${bookmark.surahName}'
-        : bookmark.surahName;
+    final isArabic = l10n.localeName == 'ar';
+    final nameDisplay = isArabic
+        ? (arabicName.isNotEmpty ? 'سورة $arabicName' : bookmark.surahName)
+        : (arabicName.isNotEmpty
+            ? '${bookmark.surahName} ($arabicName)'
+            : bookmark.surahName);
 
     // Build metadata line: "Juz X • Hizb Y • Page Z"
     final metaParts = <String>[];
@@ -496,10 +498,12 @@ class _SurahAyahGroupTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
-    // Header: "Arabic Name • English Name"
-    final titleText = arabicName.isNotEmpty
-        ? '$arabicName • $surahNameEn'
-        : surahNameEn;
+    final isArabic = l10n.localeName == 'ar';
+    final titleText = isArabic
+        ? (arabicName.isNotEmpty ? 'سورة $arabicName' : surahNameEn)
+        : (arabicName.isNotEmpty
+            ? '$surahNameEn ($arabicName)'
+            : surahNameEn);
 
     final countText = l10n.quranSavedVersesCount(bookmarks.length);
 
@@ -667,13 +671,26 @@ class _AyahBookmarkSubItem extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                bookmark.previewText,
-                style: AppTextStyles.arabicBody(fontSize: 16).copyWith(
-                  color: isDark ? Colors.white70 : Colors.black87,
-                  height: 1.6,
-                ),
-                textDirection: TextDirection.rtl,
+              Builder(
+                builder: (context) {
+                  final state = getIt<SettingsCubit>().state;
+                  final riwaya = state is SettingsLoadSuccess
+                      ? state.settings.quranRiwaya
+                      : QuranRiwaya.hafsAnAsim;
+                  final font = quranFontForRiwaya(riwaya);
+                  return Text(
+                    bookmark.previewText,
+                    style: AppTextStyles.arabicQuran(
+                      fontSize: 20,
+                      fontFamily: font.fontFamily,
+                      fontFamilyFallback: font.fontFamilyFallback,
+                    ).copyWith(
+                      color: isDark ? Colors.white70 : Colors.black87,
+                      height: 1.8,
+                    ),
+                    textDirection: TextDirection.rtl,
+                  );
+                },
               ),
               const SizedBox(height: 8),
               Align(
