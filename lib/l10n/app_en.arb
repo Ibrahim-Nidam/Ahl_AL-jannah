@@ -97,6 +97,8 @@
   "quranTabSearch": "Search",
   "quranContinueReading": "Continue Reading",
   "quranBookmarksTooltip": "Bookmarks",
+  "quranReadingHistoryTitle": "Reading History",
+  "quranNoReadingHistory": "No reading history saved yet",
   "quranBookmarksTitle": "Quran Bookmarks",
   "quranBookmarksPages": "Pages",
   "quranBookmarksAyahs": "Ayahs",

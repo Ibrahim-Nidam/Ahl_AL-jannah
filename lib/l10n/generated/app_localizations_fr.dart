@@ -264,6 +264,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get quranBookmarksTooltip => 'Favoris';
 
   @override
+  String get quranReadingHistoryTitle => 'Historique de lecture';
+
+  @override
+  String get quranNoReadingHistory => 'Aucun historique de lecture enregistré';
+
+  @override
   String get quranBookmarksTitle => 'Favoris du Coran';
 
   @override

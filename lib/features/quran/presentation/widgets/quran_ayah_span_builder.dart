@@ -201,6 +201,36 @@ abstract final class QuranAyahSpanBuilder {
       }
     }
 
+    final combining = RegExp(
+      r'[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E8\u06EA-\u06ED\u0640]',
+    );
+
+    // Normalize character cluster colors: ensure a base letter and all of its
+    // attached combining marks, tatweels (ـ), and dagger alefs (ٰ) share the
+    // exact same color. If any character in the cluster has a Tajweed color,
+    // apply that color to the entire cluster so Flutter shapes the cluster in
+    // a single TextSpan without dropping or misplacing dagger alefs or letters.
+    var cIdx = 0;
+    while (cIdx < formattedText.length) {
+      final start = cIdx;
+      cIdx++;
+      while (cIdx < formattedText.length && combining.hasMatch(formattedText[cIdx])) {
+        cIdx++;
+      }
+      Color? clusterColor;
+      for (var k = start; k < cIdx; k++) {
+        if (colors[k] != null) {
+          clusterColor = colors[k];
+          break;
+        }
+      }
+      if (clusterColor != null) {
+        for (var k = start; k < cIdx; k++) {
+          colors[k] = clusterColor;
+        }
+      }
+    }
+
     // A color boundary that falls between a lam (ل) and its following alef
     // (ا/أ/إ/آ/ٱ) breaks the lam-alef ligature: Flutter shapes each span
     // independently, so the pair cannot form and one of the two letters is
@@ -209,9 +239,6 @@ abstract final class QuranAyahSpanBuilder {
     // lam and the alef, so look backward past them when deciding.
     const lam = 0x0644;
     final alefs = {0x0622, 0x0623, 0x0625, 0x0627, 0x0671};
-    final combining = RegExp(
-      r'[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E8\u06EA-\u06ED\u0640]',
-    );
     for (var i = 1; i < formattedText.length; i++) {
       if (colors[i] == colors[i - 1]) continue;
       final ch = formattedText.codeUnitAt(i);

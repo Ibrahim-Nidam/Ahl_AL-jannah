@@ -81,6 +81,8 @@
   "quranTabSearch": "بحث",
   "quranContinueReading": "متابعة القراءة",
   "quranBookmarksTooltip": "الإشارات المرجعية",
+  "quranReadingHistoryTitle": "سجل القراءة",
+  "quranNoReadingHistory": "لا يوجد سجل قراءة بعد",
   "quranBookmarksTitle": "إشارات القرآن",
   "quranBookmarksPages": "الصفحات",
   "quranBookmarksAyahs": "الآيات",

@@ -80,6 +80,8 @@
   "quranTabSearch": "Recherche",
   "quranContinueReading": "Continuer la lecture",
   "quranBookmarksTooltip": "Favoris",
+  "quranReadingHistoryTitle": "Historique de lecture",
+  "quranNoReadingHistory": "Aucun historique de lecture enregistré",
   "quranBookmarksTitle": "Favoris du Coran",
   "quranBookmarksPages": "Pages",
   "quranBookmarksAyahs": "Versets",

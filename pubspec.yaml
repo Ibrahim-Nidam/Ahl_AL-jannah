@@ -1,7 +1,7 @@
 name: ahl_jannah
 description: "Ahl Jannah — A comprehensive offline Islamic companion app"
 publish_to: 'none'
-version: 1.1.14+16
+version: 1.1.15+17
 
 environment:
   sdk: ^3.11.5

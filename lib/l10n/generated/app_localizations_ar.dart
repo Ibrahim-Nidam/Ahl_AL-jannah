@@ -260,6 +260,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get quranBookmarksTooltip => 'الإشارات المرجعية';
 
   @override
+  String get quranReadingHistoryTitle => 'سجل القراءة';
+
+  @override
+  String get quranNoReadingHistory => 'لا يوجد سجل قراءة بعد';
+
+  @override
   String get quranBookmarksTitle => 'إشارات القرآن';
 
   @override

@@ -174,113 +174,117 @@ class _QuranPageState extends State<QuranPage>
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor:
           isDark ? AppColors.surfaceDarkVariant : AppColors.surfaceLightVariant,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withAlpha(100),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.history_rounded,
-                    color: AppColors.primaryGreen,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Reading History',
-                    style: AppTextStyles.arabicHeading(fontSize: 18).copyWith(
-                      color: isDark
-                          ? AppColors.onSurfaceDark
-                          : AppColors.onSurfaceLight,
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withAlpha(100),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (historyItems.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: Text(
-                      'No reading history saved yet',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: isDark ? Colors.white54 : Colors.black54,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.history_rounded,
+                      color: AppColors.primaryGreen,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.quranReadingHistoryTitle,
+                      style: AppTextStyles.arabicHeading(fontSize: 18).copyWith(
+                        color: isDark
+                            ? AppColors.onSurfaceDark
+                            : AppColors.onSurfaceLight,
                       ),
                     ),
-                  ),
-                )
-              else
-                Flexible(
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: historyItems.length,
-                    separatorBuilder: (_, __) => Divider(
-                      height: 1,
-                      color: isDark
-                          ? AppColors.dividerDark.withAlpha(50)
-                          : AppColors.divider.withAlpha(40),
-                    ),
-                    itemBuilder: (context, index) {
-                      final item = historyItems[index];
-                      final nameDisplay = item.surahNameAr.isNotEmpty
-                          ? '${item.surahNameAr} • ${item.surahNameEn}'
-                          : item.surahNameEn;
-                      return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 2,
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (historyItems.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        l10n.quranNoReadingHistory,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: isDark ? Colors.white54 : Colors.black54,
                         ),
-                        title: Text(
-                          nameDisplay,
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      physics: const ClampingScrollPhysics(),
+                      itemCount: historyItems.length,
+                      separatorBuilder: (_, _) => Divider(
+                        height: 1,
+                        color: isDark
+                            ? AppColors.dividerDark.withAlpha(50)
+                            : AppColors.divider.withAlpha(40),
+                      ),
+                      itemBuilder: (context, index) {
+                        final item = historyItems[index];
+                        final nameDisplay = item.surahNameAr.isNotEmpty
+                            ? '${item.surahNameAr} • ${item.surahNameEn}'
+                            : item.surahNameEn;
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
+                          title: Text(
+                            nameDisplay,
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryGreen,
+                            ),
+                          ),
+                          subtitle: Text(
+                            l10n.quranPageLabel(item.page),
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.accentGoldDark,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14,
                             color: AppColors.primaryGreen,
                           ),
-                        ),
-                        subtitle: Text(
-                          l10n.quranPageLabel(item.page),
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.accentGoldDark,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        trailing: const Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 14,
-                          color: AppColors.primaryGreen,
-                        ),
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          _openReader({
-                            'surahId': item.surahId,
-                            'title': item.surahNameEn,
-                            'page': item.page,
-                          });
-                        },
-                      );
-                    },
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _openReader({
+                              'surahId': item.surahId,
+                              'title': item.surahNameEn,
+                              'page': item.page,
+                            });
+                          },
+                        );
+                      },
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -316,7 +320,7 @@ class _QuranPageState extends State<QuranPage>
               IconButton(
                 icon: const Icon(Icons.history_rounded),
                 onPressed: _showHistoryBottomSheet,
-                tooltip: 'Reading History',
+                tooltip: l10n.quranReadingHistoryTitle,
               ),
               IconButton(
                 icon: const Icon(Icons.bookmarks_outlined),

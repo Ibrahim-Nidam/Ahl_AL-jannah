@@ -568,6 +568,18 @@ abstract class AppLocalizations {
   /// **'Bookmarks'**
   String get quranBookmarksTooltip;
 
+  /// No description provided for @quranReadingHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading History'**
+  String get quranReadingHistoryTitle;
+
+  /// No description provided for @quranNoReadingHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'No reading history saved yet'**
+  String get quranNoReadingHistory;
+
   /// No description provided for @quranBookmarksTitle.
   ///
   /// In en, this message translates to:
