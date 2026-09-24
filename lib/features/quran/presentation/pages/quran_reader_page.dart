@@ -17,6 +17,7 @@ import '../../../../core/utils/extensions.dart';
 import '../../../settings/domain/entities/settings_entities.dart';
 import '../../../settings/presentation/bloc/settings_cubit.dart';
 import '../../data/services/quran_bookmark_storage.dart';
+import '../../data/services/quran_history_storage.dart';
 import '../../domain/entities/quran_bookmark.dart';
 import '../../domain/entities/quran_entities.dart';
 import '../cubit/quran_cubit.dart';
@@ -48,6 +49,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     with WidgetsBindingObserver {
   late final QuranCubit _cubit;
   final QuranBookmarkStorage _bookmarkStorage = QuranBookmarkStorage();
+  final QuranHistoryStorage _historyStorage = QuranHistoryStorage();
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -325,6 +327,13 @@ class _QuranReaderPageState extends State<QuranReaderPage>
         previewText: surah.nameEn,
         readingMode: _readerMode,
         scrollOffset: _lastKnownScrollOffset,
+      );
+      await _historyStorage.saveHistoryItem(
+        riwaya: _activeRiwaya(),
+        surahId: surahId,
+        surahNameEn: surah.nameEn,
+        surahNameAr: surah.nameAr,
+        page: _currentPageNumber,
       );
       debugPrint(
         '[QuranReader] saved last position: surah=$surahId page=$_currentPageNumber',

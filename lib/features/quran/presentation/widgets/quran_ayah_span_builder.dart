@@ -26,15 +26,14 @@ abstract final class QuranAyahSpanBuilder {
 
   /// Marks that only exist in the database export, not in the printed
   /// Mushaf: the small high rounded zero (۟, U+06DF) and the small high
-  /// upright rectangular zero (۠, U+06E0). With Uthmani Hafs fonts these
-  /// render as a floating dot above/after letters (e.g. أُو۟لَـٰٓئِكَ at
-  /// 2:5), which is not part of the actual Mushaf text.
-  static final _unnaturalMarksRe = RegExp('[\u06DF\u06E0]');
+  /// upright rectangular zero (۠, U+06E0), plus invisible control chars.
+  static final _unnaturalMarksRe = RegExp('[\u06DF\u06E0\u200F\u200E\u200B]');
 
-  /// Removes artificial marks (U+06DF/U+06E0) and tatweel (U+0640) embedded
-  /// in Hafs text before superscript alef (U+0670) which shift alef positioning.
+  /// Removes artificial zero marks (U+06DF/U+06E0) and control characters.
+  /// Tatweel (\u0640) MUST NOT be stripped because it is the Uthmani carrier
+  /// for hamza (ـٔ) and dagger alef (ـٰ) — stripping it causes missing letters.
   static String stripUnnaturalTajweedMarks(String text) {
-    return text.replaceAll(_unnaturalMarksRe, '').replaceAll('\u0640', '');
+    return text.replaceAll(_unnaturalMarksRe, '');
   }
 
   /// The Bismillah base consonants (no diacritics) to match against.

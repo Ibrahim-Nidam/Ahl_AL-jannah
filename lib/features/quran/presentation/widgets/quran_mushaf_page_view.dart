@@ -220,10 +220,18 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
   }
 
   static final _dummyRecognizer = TapGestureRecognizer();
+  static final Map<String, double> _autoFitCache = {};
 
   double _computeOptimalFontSize(double availWidth, double availHeight) {
     if (_ayahs.isEmpty || availHeight <= 100 || availWidth <= 100) {
       return widget.fontSize;
+    }
+
+    final cacheKey =
+        '${widget.pageNumber}_${availWidth.toInt()}_${availHeight.toInt()}_${widget.showTajweed}_${widget.fontFamily}_${widget.warsh}';
+    final cached = _autoFitCache[cacheKey];
+    if (cached != null) {
+      return cached;
     }
 
     final groups = _groupBySurah(_ayahs);
@@ -231,15 +239,15 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
     double maxF = 120.0;
     double bestF = widget.fontSize;
 
-    for (int iter = 0; iter < 10; iter++) {
+    for (int iter = 0; iter < 12; iter++) {
       final testFont = (minF + maxF) / 2;
-      double totalH = 40.0;
+      double totalH = 40.0; // 20px top + 20px bottom padding
 
       for (final group in groups) {
         if (group.first.number == 1) {
-          totalH += 60.0;
+          totalH += 81.0; // Surah Header exact height
           if (group.first.surahId != 9) {
-            totalH += 45.0;
+            totalH += 59.0; // Bismillah Header exact height
           }
         }
 
@@ -277,6 +285,7 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
       }
     }
 
+    _autoFitCache[cacheKey] = bestF;
     return bestF;
   }
 

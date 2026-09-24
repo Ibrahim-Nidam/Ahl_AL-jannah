@@ -12,6 +12,7 @@ import '../../../../core/widgets/clear_text_suffix.dart';
 import '../../../settings/domain/entities/settings_entities.dart';
 import '../../../settings/presentation/bloc/settings_cubit.dart';
 import '../../data/services/quran_bookmark_storage.dart';
+import '../../data/services/quran_history_storage.dart';
 import '../../domain/entities/quran_bookmark.dart';
 import '../../domain/entities/quran_entities.dart';
 import '../cubit/quran_cubit.dart';
@@ -36,6 +37,7 @@ class _QuranPageState extends State<QuranPage>
   String _surahFilterQuery = '';
 
   final QuranBookmarkStorage _bookmarkStorage = QuranBookmarkStorage();
+  final QuranHistoryStorage _historyStorage = QuranHistoryStorage();
   Future<QuranBookmark?>? _lastPositionFuture;
   bool _autoResumed = false;
 
@@ -158,6 +160,133 @@ class _QuranPageState extends State<QuranPage>
     });
   }
 
+  void _showHistoryBottomSheet() async {
+    final settingsState = getIt<SettingsCubit>().state;
+    final riwaya = settingsState is SettingsLoadSuccess
+        ? settingsState.settings.quranRiwaya
+        : QuranRiwaya.hafsAnAsim;
+
+    final historyItems = await _historyStorage.loadHistory(riwaya);
+    if (!mounted) return;
+
+    final isDark = context.isDarkMode;
+    final l10n = AppLocalizations.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor:
+          isDark ? AppColors.surfaceDarkVariant : AppColors.surfaceLightVariant,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withAlpha(100),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.history_rounded,
+                    color: AppColors.primaryGreen,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Reading History',
+                    style: AppTextStyles.arabicHeading(fontSize: 18).copyWith(
+                      color: isDark
+                          ? AppColors.onSurfaceDark
+                          : AppColors.onSurfaceLight,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (historyItems.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Text(
+                      'No reading history saved yet',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: isDark ? Colors.white54 : Colors.black54,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: historyItems.length,
+                    separatorBuilder: (_, __) => Divider(
+                      height: 1,
+                      color: isDark
+                          ? AppColors.dividerDark.withAlpha(50)
+                          : AppColors.divider.withAlpha(40),
+                    ),
+                    itemBuilder: (context, index) {
+                      final item = historyItems[index];
+                      final nameDisplay = item.surahNameAr.isNotEmpty
+                          ? '${item.surahNameAr} • ${item.surahNameEn}'
+                          : item.surahNameEn;
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
+                        title: Text(
+                          nameDisplay,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryGreen,
+                          ),
+                        ),
+                        subtitle: Text(
+                          l10n.quranPageLabel(item.page),
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.accentGoldDark,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        trailing: const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 14,
+                          color: AppColors.primaryGreen,
+                        ),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _openReader({
+                            'surahId': item.surahId,
+                            'title': item.surahNameEn,
+                            'page': item.page,
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -184,6 +313,11 @@ class _QuranPageState extends State<QuranPage>
                   : AppColors.onSurfaceLight,
             ),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.history_rounded),
+                onPressed: _showHistoryBottomSheet,
+                tooltip: 'Reading History',
+              ),
               IconButton(
                 icon: const Icon(Icons.bookmarks_outlined),
                 onPressed: () => context
