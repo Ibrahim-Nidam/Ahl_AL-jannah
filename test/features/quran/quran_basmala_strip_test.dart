@@ -1,4 +1,7 @@
+import 'package:ahl_jannah/features/quran/domain/entities/quran_entities.dart';
 import 'package:ahl_jannah/features/quran/presentation/widgets/quran_ayah_span_builder.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -57,6 +60,41 @@ void main() {
           QuranAyahSpanBuilder.formatAyahText(12, 90, text),
           text.replaceAll('۟', ''),
         );
+      },
+    );
+
+    test(
+      'QuranAyahSpanBuilder.build preserves Warsh rounded-zero mark in Yusuf 12:90',
+      () {
+        const text =
+            'قَالُوٓاْ أَ۟نَّكَ لَأَنتَ يُوسُفُۖ قَالَ أَنَا يُوسُفُ '
+            'وَهَٰذَآ أَخِےۖ قَدْ مَنَّ اَ۬للَّهُ عَلَيْنَآۖ إِنَّهُۥ '
+            'مَنْ يَّتَّقِ وَيَصْبِرْ فَإِنَّ اَ۬للَّهَ لَا يُضِيعُ أَجْرَ '
+            'اَ۬لْمُحْسِنِينَۖ';
+        const ayah = AyahEntity(
+          id: 1,
+          surahId: 12,
+          number: 90,
+          textAr: text,
+          juz: 13,
+          page: 246,
+          hizb: 25,
+        );
+
+        final spans = QuranAyahSpanBuilder.build(
+          ayahs: [ayah],
+          fontSize: 24,
+          quranTextColor: const Color(0xFF000000),
+          accentColor: const Color(0xFFD4AF37),
+          selectedAyah: null,
+          bookmarkedAyahKeys: const {},
+          recognizerFor: (_) => TapGestureRecognizer(),
+          warsh: true,
+        );
+
+        final fullText = spans.map((s) => s.toPlainText()).join();
+        expect(fullText.contains('أَ۟نَّكَ'), isTrue);
+        expect(fullText.contains('۟'), isTrue);
       },
     );
   });

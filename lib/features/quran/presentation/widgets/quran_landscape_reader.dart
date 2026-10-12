@@ -246,6 +246,7 @@ class _QuranLandscapeReaderState extends State<QuranLandscapeReader> {
               showTajweed: widget.showTajweed,
               fontFamily: widget.fontFamily,
               fontFamilyFallback: widget.fontFamilyFallback,
+              warsh: widget.warsh,
             ),
           ),
           textDirection: TextDirection.rtl,

@@ -381,6 +381,7 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
                       showTajweed: widget.showTajweed,
                       fontFamily: widget.fontFamily,
                       fontFamilyFallback: widget.fontFamilyFallback,
+                      warsh: widget.warsh,
                     ),
                   ),
                   textAlign: TextAlign.right,
