@@ -89,6 +89,24 @@ class SettingsCubit extends Cubit<SettingsState> {
     }
   }
 
+  Future<void> setAppFontFamily(AppFontFamily font) async {
+    final currentState = state;
+    if (currentState is SettingsLoadSuccess) {
+      await updateSettings(
+        currentState.settings.copyWith(appFontFamily: font),
+      );
+    }
+  }
+
+  Future<void> setAppFontScale(double scale) async {
+    final currentState = state;
+    if (currentState is SettingsLoadSuccess) {
+      await updateSettings(
+        currentState.settings.copyWith(appFontScale: scale),
+      );
+    }
+  }
+
   Future<void> setQuranRiwaya(QuranRiwaya quranRiwaya) async {
     final currentState = state;
     if (currentState is SettingsLoadSuccess) {

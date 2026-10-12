@@ -12,12 +12,30 @@ import '../../features/settings/domain/entities/settings_entities.dart';
 import 'app_palettes.dart';
 
 abstract final class AppTheme {
-  static ThemeData light([AppColorPalette palette = AppColorPalette.classic]) {
-    return _build(AppPalettes.resolve(palette, Brightness.light), Brightness.light);
+  static ThemeData light([
+    AppColorPalette palette = AppColorPalette.classic,
+    AppFontFamily fontFamily = AppFontFamily.hafs,
+    double fontScale = 1.0,
+  ]) {
+    return _build(
+      AppPalettes.resolve(palette, Brightness.light),
+      Brightness.light,
+      fontFamily,
+      fontScale,
+    );
   }
 
-  static ThemeData dark([AppColorPalette palette = AppColorPalette.classic]) {
-    return _build(AppPalettes.resolve(palette, Brightness.dark), Brightness.dark);
+  static ThemeData dark([
+    AppColorPalette palette = AppColorPalette.classic,
+    AppFontFamily fontFamily = AppFontFamily.hafs,
+    double fontScale = 1.0,
+  ]) {
+    return _build(
+      AppPalettes.resolve(palette, Brightness.dark),
+      Brightness.dark,
+      fontFamily,
+      fontScale,
+    );
   }
 
   /// Picks black or white — whichever gives stronger contrast — for text
@@ -28,7 +46,12 @@ abstract final class AppTheme {
     return background.computeLuminance() > 0.5 ? Colors.black : Colors.white;
   }
 
-  static ThemeData _build(AppPaletteColors p, Brightness brightness) {
+  static ThemeData _build(
+    AppPaletteColors p,
+    Brightness brightness,
+    AppFontFamily fontFamily,
+    double fontScale,
+  ) {
     final isLight = brightness == Brightness.light;
 
     final colorScheme = ColorScheme.fromSeed(
@@ -51,8 +74,8 @@ abstract final class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       brightness: brightness,
-      scaffoldBackgroundColor: p.surface,
-      fontFamily: 'Inter',
+      fontFamily: fontFamily.fontFamily,
+      fontFamilyFallback: const ['Inter', 'Noto Naskh Arabic', 'Scheherazade New', 'Arial'],
 
       // The design-system extension — this is what makes palette colors
       // (including `quranText`) available anywhere via
@@ -69,10 +92,11 @@ abstract final class AppTheme {
         systemOverlayStyle:
             isLight ? SystemUiOverlayStyle.dark : SystemUiOverlayStyle.light,
         titleTextStyle: TextStyle(
-          fontSize: 18,
+          fontSize: 18 * fontScale,
           fontWeight: FontWeight.w600,
           color: p.onSurface,
           letterSpacing: -0.3,
+          fontFamily: fontFamily.fontFamily,
         ),
       ),
 
@@ -83,13 +107,13 @@ abstract final class AppTheme {
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return TextStyle(
-              fontSize: 11,
+              fontSize: 11 * fontScale,
               fontWeight: FontWeight.w600,
               color: p.primary,
             );
           }
           return TextStyle(
-            fontSize: 11,
+            fontSize: 11 * fontScale,
             fontWeight: FontWeight.w500,
             color: p.onSurfaceVariant,
           );
@@ -132,8 +156,8 @@ abstract final class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: const TextStyle(
-            fontSize: 15,
+          textStyle: TextStyle(
+            fontSize: 15 * fontScale,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -143,71 +167,71 @@ abstract final class AppTheme {
       iconTheme: IconThemeData(color: p.onSurfaceVariant, size: 24),
 
       // ── Text ──
-      textTheme: _buildTextTheme(p.onSurface),
+      textTheme: _buildTextTheme(p.onSurface, fontScale),
     );
   }
 
   /// Builds a [TextTheme] using [color] for every role. Latin/general UI
   /// text — never used for Quran ayahs, which always use the dedicated
   /// `quranText` color plus the user's selected Quran font instead.
-  static TextTheme _buildTextTheme(Color color) {
+  static TextTheme _buildTextTheme(Color color, double scale) {
     return TextTheme(
       displayLarge: TextStyle(
-        fontSize: 57,
+        fontSize: 57 * scale,
         fontWeight: FontWeight.w400,
         color: color,
         letterSpacing: -0.25,
       ),
-      displayMedium: TextStyle(fontSize: 45, fontWeight: FontWeight.w400, color: color),
-      displaySmall: TextStyle(fontSize: 36, fontWeight: FontWeight.w400, color: color),
+      displayMedium: TextStyle(fontSize: 45 * scale, fontWeight: FontWeight.w400, color: color),
+      displaySmall: TextStyle(fontSize: 36 * scale, fontWeight: FontWeight.w400, color: color),
       headlineLarge: TextStyle(
-        fontSize: 32,
+        fontSize: 32 * scale,
         fontWeight: FontWeight.w600,
         color: color,
         letterSpacing: -0.5,
       ),
       headlineMedium: TextStyle(
-        fontSize: 28,
+        fontSize: 28 * scale,
         fontWeight: FontWeight.w600,
         color: color,
         letterSpacing: -0.3,
       ),
-      headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: color),
+      headlineSmall: TextStyle(fontSize: 24 * scale, fontWeight: FontWeight.w600, color: color),
       titleLarge: TextStyle(
-        fontSize: 22,
+        fontSize: 22 * scale,
         fontWeight: FontWeight.w600,
         color: color,
         letterSpacing: -0.3,
       ),
       titleMedium: TextStyle(
-        fontSize: 16,
+        fontSize: 16 * scale,
         fontWeight: FontWeight.w500,
         color: color,
         letterSpacing: 0.15,
       ),
       titleSmall: TextStyle(
-        fontSize: 14,
+        fontSize: 14 * scale,
         fontWeight: FontWeight.w500,
         color: color,
         letterSpacing: 0.1,
       ),
-      bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: color, height: 1.5),
-      bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: color, height: 1.5),
-      bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: color, height: 1.4),
+      bodyLarge: TextStyle(fontSize: 16 * scale, fontWeight: FontWeight.w400, color: color, height: 1.5),
+      bodyMedium: TextStyle(fontSize: 14 * scale, fontWeight: FontWeight.w400, color: color, height: 1.5),
+      bodySmall: TextStyle(fontSize: 12 * scale, fontWeight: FontWeight.w400, color: color, height: 1.4),
       labelLarge: TextStyle(
-        fontSize: 14,
+        fontSize: 14 * scale,
         fontWeight: FontWeight.w500,
         color: color,
         letterSpacing: 0.1,
       ),
       labelMedium: TextStyle(
-        fontSize: 12,
+        fontSize: 12 * scale,
         fontWeight: FontWeight.w500,
         color: color,
         letterSpacing: 0.5,
       ),
       labelSmall: TextStyle(
-        fontSize: 11,
+        fontSize: 11 * scale,
         fontWeight: FontWeight.w500,
         color: color,
         letterSpacing: 0.5,

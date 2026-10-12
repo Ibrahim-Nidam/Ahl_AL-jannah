@@ -61,7 +61,7 @@ class QuranMushafPageView extends StatefulWidget {
     required this.onAyahTapped,
     required this.onPageMetadataLoaded,
     required this.bookmarkedAyahKeys,
-    this.fontFamily = 'Lateef',
+    this.fontFamily = 'UthmanicWarsh',
     this.fontFamilyFallback = const [
       'Noto Naskh Arabic',
       'Scheherazade New',
@@ -263,6 +263,7 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
                     ),
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.justify,
+                    textScaler: TextScaler.noScaling,
                     locale: const Locale('ar'),
                   ),
                 ),
@@ -303,7 +304,11 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
         final translationText = widget.translationLang == 'fr'
             ? ayah.translationFr
             : ayah.translationEn;
-        final surahName = _getSurahEntity(ayah.surahId).nameEn;
+        final surahEntity = _getSurahEntity(ayah.surahId);
+        final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+        final surahName = (isArabic && surahEntity.nameAr.isNotEmpty)
+            ? surahEntity.nameAr
+            : surahEntity.nameEn;
 
         return GestureDetector(
           onLongPress: () => widget.onAyahTapped(ayah),

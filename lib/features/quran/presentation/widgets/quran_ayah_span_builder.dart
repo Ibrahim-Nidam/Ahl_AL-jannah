@@ -24,17 +24,18 @@ abstract final class QuranAyahSpanBuilder {
     '\u06DF-\u06E8\u06EA-\u06ED\u0640]',
   );
 
-  /// Marks that only exist in the database export, not in the printed
-  /// Mushaf: the small high rounded zero (۟, U+06DF) and the small high
+  /// Marks that only exist in the Hafs database export, not in the printed
+  /// Hafs Mushaf: the small high rounded zero (۟, U+06DF) and the small high
   /// upright rectangular zero (۠, U+06E0), plus invisible control chars.
   static final _unnaturalMarksRe = RegExp('[\u06DF\u06E0\u200F\u200E\u200B]');
 
-  /// Removes artificial zero marks (U+06DF/U+06E0), control characters,
-  /// and artificial tatweel (\u0640) carriers embedded before dagger alef
-  /// which shift dagger alef positioning in Uthmanic Hafs fonts.
+  /// Removes database-only marks and control characters. Warsh uses U+06DF
+  /// (۟) as part of its orthography, so that mark must remain in Warsh text.
   static String stripUnnaturalTajweedMarks(String text, {bool warsh = false}) {
-    final cleaned = text.replaceAll(_unnaturalMarksRe, '');
-    return warsh ? cleaned : cleaned.replaceAll('\u0640', '');
+    final cleaned = warsh
+        ? text.replaceAll(RegExp('[\u06E0\u200F\u200E\u200B]'), '')
+        : text.replaceAll(_unnaturalMarksRe, '');
+    return warsh ? cleaned : cleaned.replaceAll(RegExp(r'\u0640(?=\u0670|\u06E7)'), '');
   }
 
   /// The Bismillah base consonants (no diacritics) to match against.
@@ -113,7 +114,7 @@ abstract final class QuranAyahSpanBuilder {
     required Set<String> bookmarkedAyahKeys,
     required GestureRecognizer Function(AyahEntity ayah) recognizerFor,
     bool showTajweed = false,
-    String fontFamily = 'Lateef',
+    String fontFamily = 'UthmanicWarsh',
     List<String> fontFamilyFallback = const ['Noto Naskh Arabic', 'Scheherazade New', 'Arial'],
     double lineHeight = 1.55,
     bool warsh = false,

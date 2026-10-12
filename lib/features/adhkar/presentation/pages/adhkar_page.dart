@@ -6,6 +6,7 @@ import 'package:ahl_jannah/core/theme/app_colors.dart';
 import 'package:ahl_jannah/core/theme/app_text_styles.dart';
 import 'package:ahl_jannah/l10n/generated/app_localizations.dart';
 
+import 'package:ahl_jannah/core/widgets/arabic_font_size_slider.dart';
 import '../../../../core/di/injection.dart';
 import '../../../settings/presentation/bloc/settings_cubit.dart';
 import '../../domain/entities/adhkar_entities.dart';
@@ -128,6 +129,14 @@ class _AdhkarPageState extends State<AdhkarPage>
                     )
                   : null,
               actions: [
+                IconButton(
+                  tooltip: l10n.adhkarSettingsTitle,
+                  icon: const Icon(Icons.format_size_rounded),
+                  onPressed: () => showArabicFontSizeBottomSheet(
+                    context,
+                    title: l10n.adhkarSettingsTitle,
+                  ),
+                ),
                 IconButton(
                   tooltip: l10n.tasbeehPageTitle,
                   icon: const Icon(Icons.fingerprint_rounded),

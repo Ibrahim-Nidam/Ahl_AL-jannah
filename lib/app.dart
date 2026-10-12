@@ -74,6 +74,12 @@ class AhlJannahApp extends StatelessWidget {
           final locale = _resolveLocale(settingsState);
           final themeMode = _resolveThemeMode(settingsState);
           final palette = _resolvePalette(settingsState);
+          final appFontFamily = settingsState is SettingsLoadSuccess
+              ? settingsState.settings.appFontFamily
+              : AppFontFamily.hafs;
+          final appFontScale = settingsState is SettingsLoadSuccess
+              ? settingsState.settings.appFontScale
+              : 1.0;
 
           return ScreenUtilInit(
             // Design size based on standard mobile (360 × 800).
@@ -85,11 +91,17 @@ class AhlJannahApp extends StatelessWidget {
                 title: AppConstants.appName,
                 debugShowCheckedModeBanner: false,
                 builder: (context, child) {
-                  return Stack(
-                    children: [
-                      ?child,
-                      const StartupPermissionPrompt(),
-                    ],
+                  final mediaQuery = MediaQuery.of(context);
+                  return MediaQuery(
+                    data: mediaQuery.copyWith(
+                      textScaler: TextScaler.linear(appFontScale),
+                    ),
+                    child: Stack(
+                      children: [
+                        ?child,
+                        const StartupPermissionPrompt(),
+                      ],
+                    ),
                   );
                 },
 
@@ -99,8 +111,8 @@ class AhlJannahApp extends StatelessWidget {
                 // AppThemeMode) decides which one is actually shown, and
                 // switches immediately when the setting changes since
                 // this whole subtree rebuilds on SettingsCubit emissions.
-                theme: AppTheme.light(palette),
-                darkTheme: AppTheme.dark(palette),
+                theme: AppTheme.light(palette, appFontFamily, appFontScale),
+                darkTheme: AppTheme.dark(palette, appFontFamily, appFontScale),
                 themeMode: themeMode,
                 // ── Localization ──
                 // `locale` is null for AppLanguage.system, which makes

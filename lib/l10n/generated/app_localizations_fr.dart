@@ -128,6 +128,42 @@ class AppLocalizationsFr extends AppLocalizations {
   String get quranFontUthmanicWarshName => 'Uthmani Warsh (V21)';
 
   @override
+  String get appFontSectionTitle => 'Police de l\'application';
+
+  @override
+  String get appFontSectionDescription =>
+      'Choisissez la police de l\'interface (Hafs ou Warsh). N\'affecte pas le texte du Coran.';
+
+  @override
+  String get appFontHafsOption => 'Outhmani Hafs (Par défaut)';
+
+  @override
+  String get appFontWarshOption => 'Outhmani Warsh';
+
+  @override
+  String get appFontSizeSectionTitle => 'Taille de police de l\'application';
+
+  @override
+  String get appFontSizeSectionDescription =>
+      'Changer la taille de tous les textes sauf le Coran, le Hadith et les Adhkar.';
+
+  @override
+  String appFontSizeLabel(int size) {
+    return 'Taille de police : $size%';
+  }
+
+  @override
+  String get hadithSettingsTitle => 'Paramètres de police du Hadith';
+
+  @override
+  String get adhkarSettingsTitle => 'Paramètres de police des Adhkar';
+
+  @override
+  String contentFontSizeLabel(int size) {
+    return 'Taille de police : $size px';
+  }
+
+  @override
   String get quranRiwayaSectionTitle => 'Récitation du Coran';
 
   @override

@@ -125,6 +125,7 @@ class _HadithItemTileState extends State<HadithItemTile> {
             child: Text(
               QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(hadith.arabic),
               textAlign: TextAlign.justify,
+              textScaler: TextScaler.noScaling,
               style:
                   AppTextStyles.arabicBody(
                     fontSize: arabicFontSize,

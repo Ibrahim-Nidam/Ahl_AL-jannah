@@ -32,7 +32,7 @@ class QuranInlineSurahHeader extends StatelessWidget {
     super.key,
     required this.surah,
     required this.accent,
-    this.fontFamily = 'Lateef',
+    this.fontFamily = 'UthmanicWarsh',
     this.fontFamilyFallback = const [
       'Noto Naskh Arabic',
       'Scheherazade New',
@@ -96,7 +96,7 @@ class QuranInlineBismillah extends StatelessWidget {
   const QuranInlineBismillah({
     super.key,
     required this.color,
-    this.fontFamily = 'Lateef',
+    this.fontFamily = 'UthmanicWarsh',
     this.fontFamilyFallback = const [
       'Noto Naskh Arabic',
       'Scheherazade New',

@@ -392,7 +392,9 @@ class _QuranReaderPageState extends State<QuranReaderPage>
 
   String _getCurrentTitle() {
     if (_activeSurahId == null) return widget.title;
-    return _getSurahEntity(_activeSurahId!).nameEn;
+    final surah = _getSurahEntity(_activeSurahId!);
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    return (isArabic && surah.nameAr.isNotEmpty) ? surah.nameAr : surah.nameEn;
   }
 
   Future<void> _loadBookmarks() async {
@@ -497,6 +499,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
               first.surahId,
               first.number,
               first.textAr,
+              warsh: _isWarsh,
             ),
             readingMode: _readerMode,
           );
@@ -540,6 +543,7 @@ class _QuranReaderPageState extends State<QuranReaderPage>
             ayah.surahId,
             ayah.number,
             ayah.textAr,
+            warsh: _isWarsh,
           ),
           readingMode: _readerMode,
         );
@@ -559,7 +563,10 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     if (ayah == null) return;
     final l10n = AppLocalizations.of(context);
     final textToCopy =
-        QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(ayah.textAr);
+        QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(
+          ayah.textAr,
+          warsh: _isWarsh,
+        );
     Clipboard.setData(ClipboardData(text: textToCopy));
     _showCustomToast(l10n.quranVerseCopied);
     setState(() => _selectedAyah = null);
@@ -570,7 +577,10 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     if (ayah == null) return;
     final l10n = AppLocalizations.of(context);
     final surah = _getSurahEntity(ayah.surahId);
-    final cleanArabic = QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(ayah.textAr);
+    final cleanArabic = QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(
+      ayah.textAr,
+      warsh: _isWarsh,
+    );
 
     final StringBuffer buffer = StringBuffer();
     buffer.writeln('📖 سورة ${surah.nameAr.isNotEmpty ? surah.nameAr : surah.nameEn} (${surah.nameEn}) - ${l10n.quranVerseLabel(ayah.surahId, ayah.number)}');

@@ -36,7 +36,7 @@ abstract final class AppTextStyles {
   /// Primary Arabic text style for Quran ayahs.
   static TextStyle arabicQuran({
     double fontSize = 28,
-    String fontFamily = 'Lateef',
+    String fontFamily = 'UthmanicWarsh',
     List<String> fontFamilyFallback = _defaultArabicFallback,
   }) => TextStyle(
     fontFamily: fontFamily,
@@ -52,7 +52,7 @@ abstract final class AppTextStyles {
   /// Arabic text for adhkar, hadith, and general Islamic content.
   static TextStyle arabicBody({
     double fontSize = 22,
-    String fontFamily = 'Lateef',
+    String fontFamily = 'UthmanicWarsh',
     List<String> fontFamilyFallback = _defaultArabicFallback,
   }) => TextStyle(
     fontFamily: fontFamily,
@@ -67,7 +67,7 @@ abstract final class AppTextStyles {
   /// Bold Arabic text for surah names and headings.
   static TextStyle arabicHeading({
     double fontSize = 24,
-    String? fontFamily,
+    String? fontFamily = 'UthmanicWarsh',
     List<String> fontFamilyFallback = _defaultArabicFallback,
   }) => TextStyle(
     fontFamily: fontFamily,

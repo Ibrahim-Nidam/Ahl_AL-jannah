@@ -18,11 +18,27 @@ enum AppThemeMode { system, light, dark }
 enum AppColorPalette { classic, ocean, desert }
 
 /// Quran text font. Additional fonts can be appended later — doing so
-/// only requires: (1) bundling the .ttf under `assets/fonts` and
+/// requires: (1) bundling the .ttf under `assets/fonts` and
 /// registering it in `pubspec.yaml`, (2) adding an enum case here with
 /// its `fontFamily`/`fontFamilyFallback` in [QuranFontX] below. No other
 /// file needs to change.
 enum QuranFont { uthmanic, uthmanicHafs, uthmanicWarsh }
+
+/// App UI font choice (Hafs vs Warsh, defaulting to Hafs).
+/// Note: This ONLY applies to general app UI font text, never overriding
+/// actual Quran text rendering fonts.
+enum AppFontFamily { hafs, warsh }
+
+extension AppFontFamilyX on AppFontFamily {
+  String get fontFamily {
+    switch (this) {
+      case AppFontFamily.hafs:
+        return 'UthmanicHafs';
+      case AppFontFamily.warsh:
+        return 'UthmanicWarsh';
+    }
+  }
+}
 
 /// Maps each [QuranFont] to its concrete font family + fallback chain.
 /// Kept next to the enum (not in `core/theme`) so `core/theme` never has
@@ -31,7 +47,7 @@ extension QuranFontX on QuranFont {
   String get fontFamily {
     switch (this) {
       case QuranFont.uthmanic:
-        return 'Lateef';
+        return 'UthmanicWarsh';
       case QuranFont.uthmanicHafs:
         return 'UthmanicHafs';
       case QuranFont.uthmanicWarsh:
@@ -87,6 +103,8 @@ class SettingsEntity {
   // ── Appearance ──
   final AppThemeMode themeMode;
   final AppColorPalette colorPalette;
+  final AppFontFamily appFontFamily;
+  final double appFontScale;
 
   // ── Quran ──
   final QuranRiwaya quranRiwaya;
@@ -122,6 +140,8 @@ class SettingsEntity {
     required this.language,
     required this.themeMode,
     required this.colorPalette,
+    required this.appFontFamily,
+    required this.appFontScale,
     required this.quranRiwaya,
     required this.arabicFontSize,
     required this.notificationsEnabled,
@@ -143,6 +163,8 @@ class SettingsEntity {
       language: AppLanguage.system,
       themeMode: AppThemeMode.system,
       colorPalette: AppColorPalette.classic,
+      appFontFamily: AppFontFamily.hafs,
+      appFontScale: 1.0,
       quranRiwaya: QuranRiwaya.hafsAnAsim,
       arabicFontSize: 28.0,
       notificationsEnabled: true,
@@ -160,6 +182,8 @@ class SettingsEntity {
     AppLanguage? language,
     AppThemeMode? themeMode,
     AppColorPalette? colorPalette,
+    AppFontFamily? appFontFamily,
+    double? appFontScale,
     QuranRiwaya? quranRiwaya,
     double? arabicFontSize,
     bool? notificationsEnabled,
@@ -175,6 +199,8 @@ class SettingsEntity {
       language: language ?? this.language,
       themeMode: themeMode ?? this.themeMode,
       colorPalette: colorPalette ?? this.colorPalette,
+      appFontFamily: appFontFamily ?? this.appFontFamily,
+      appFontScale: appFontScale ?? this.appFontScale,
       quranRiwaya: quranRiwaya ?? this.quranRiwaya,
       arabicFontSize: arabicFontSize ?? this.arabicFontSize,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,

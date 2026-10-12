@@ -20,7 +20,12 @@ void main() {
       final text =
           'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ يَـٰٓأَيُّهَا ٱلنَّاسُ ٱتَّقُو';
       final result = QuranAyahSpanBuilder.formatAyahText(4, 1, text);
-      expect(result.startsWith(QuranAyahSpanBuilder.stripUnnaturalTajweedMarks('يَـٰٓأَيُّهَا')), isTrue);
+      expect(
+        result.startsWith(
+          QuranAyahSpanBuilder.stripUnnaturalTajweedMarks('يَـٰٓأَيُّهَا'),
+        ),
+        isTrue,
+      );
       expect(result.contains('بِسْمِ'), isFalse);
     });
 
@@ -34,5 +39,25 @@ void main() {
       final text = 'ٱلَّذِينَ يُؤْمِنُونَ بِٱلْغَيْبِ';
       expect(QuranAyahSpanBuilder.formatAyahText(2, 3, text), text);
     });
+
+    test(
+      'Warsh preserves the orthographic rounded-zero mark in Yusuf 12:90',
+      () {
+        const text =
+            'قَالُوٓاْ أَ۟نَّكَ لَأَنتَ يُوسُفُۖ قَالَ أَنَا يُوسُفُ '
+            'وَهَٰذَآ أَخِےۖ قَدْ مَنَّ اَ۬للَّهُ عَلَيْنَآۖ إِنَّهُۥ '
+            'مَنْ يَّتَّقِ وَيَصْبِرْ فَإِنَّ اَ۬للَّهَ لَا يُضِيعُ أَجْرَ '
+            'اَ۬لْمُحْسِنِينَۖ';
+
+        expect(
+          QuranAyahSpanBuilder.formatAyahText(12, 90, text, warsh: true),
+          text,
+        );
+        expect(
+          QuranAyahSpanBuilder.formatAyahText(12, 90, text),
+          text.replaceAll('۟', ''),
+        );
+      },
+    );
   });
 }

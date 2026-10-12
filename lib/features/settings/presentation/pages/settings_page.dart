@@ -13,6 +13,7 @@ import '../../../../core/theme/app_palettes.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/debug_access.dart';
+import '../../../../core/widgets/arabic_font_size_slider.dart';
 import '../../../prayer/data/repositories/prayer_notification_service.dart';
 import '../../../prayer/data/repositories/adhan_audio_player.dart';
 import '../../../prayer/domain/entities/prayer_entities.dart';
@@ -178,6 +179,39 @@ class _SettingsPageState extends State<SettingsPage> {
 
               const SizedBox(height: 20),
 
+              // App UI Font (Hafs vs Warsh)
+              _SubsectionLabel(
+                text: l10n.appFontSectionTitle,
+                description: l10n.appFontSectionDescription,
+              ),
+              const SizedBox(height: 4),
+              _SelectableOptionTile(
+                label: l10n.appFontHafsOption,
+                selected: settings.appFontFamily == AppFontFamily.hafs,
+                onTap: () => context.read<SettingsCubit>().setAppFontFamily(
+                  AppFontFamily.hafs,
+                ),
+              ),
+              _SelectableOptionTile(
+                label: l10n.appFontWarshOption,
+                selected: settings.appFontFamily == AppFontFamily.warsh,
+                onTap: () => context.read<SettingsCubit>().setAppFontFamily(
+                  AppFontFamily.warsh,
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // App-wide font size (all fonts except Quran, Hadith, Adhkar)
+              _SubsectionLabel(
+                text: l10n.appFontSizeSectionTitle,
+                description: l10n.appFontSizeSectionDescription,
+              ),
+              const SizedBox(height: 4),
+              _AppFontSizeSlider(currentScale: settings.appFontScale),
+
+              const SizedBox(height: 20),
+
               // Quran riwaya (recitation)
               _SubsectionLabel(
                 text: l10n.quranRiwayaSectionTitle,
@@ -199,40 +233,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 text: l10n.arabicFontSizeSectionTitle,
                 description: l10n.arabicFontSizeSectionDescription,
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Slider(
-                        value: settings.arabicFontSize,
-                        min: AppConstants.minArabicFontSize,
-                        max: AppConstants.maxArabicFontSize,
-                        divisions:
-                            (AppConstants.maxArabicFontSize -
-                                    AppConstants.minArabicFontSize)
-                                .round(),
-                        activeColor: Theme.of(context).colorScheme.primary,
-                        inactiveColor: Theme.of(
-                          context,
-                        ).colorScheme.primary.withAlpha(50),
-                        onChanged: (value) => context
-                            .read<SettingsCubit>()
-                            .setArabicFontSize(value),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Text(
-                        l10n.quranArabicFontSize(
-                          settings.arabicFontSize.round(),
-                        ),
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              const SizedBox(height: 4),
+              ArabicFontSizeSlider(currentSize: settings.arabicFontSize),
 
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
@@ -984,3 +986,77 @@ class _ThemePreviewCard extends StatelessWidget {
     );
   }
 }
+
+class _AppFontSizeSlider extends StatefulWidget {
+  final double currentScale;
+
+  const _AppFontSizeSlider({required this.currentScale});
+
+  @override
+  State<_AppFontSizeSlider> createState() => _AppFontSizeSliderState();
+}
+
+class _AppFontSizeSliderState extends State<_AppFontSizeSlider> {
+  late double _tempScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _tempScale = widget.currentScale;
+  }
+
+  @override
+  void didUpdateWidget(covariant _AppFontSizeSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentScale != widget.currentScale) {
+      _tempScale = widget.currentScale;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final percentage = (_tempScale * 100).round();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                l10n.appFontSizeLabel(percentage),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              Text(
+                '$percentage%',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+        Slider(
+          value: _tempScale.clamp(0.7, 1.5),
+          min: 0.7,
+          max: 1.5,
+          divisions: 16,
+          label: '$percentage%',
+          onChanged: (val) {
+            setState(() {
+              _tempScale = val;
+            });
+          },
+          onChangeEnd: (val) {
+            context.read<SettingsCubit>().setAppFontScale(val);
+          },
+        ),
+      ],
+    );
+  }
+}
+

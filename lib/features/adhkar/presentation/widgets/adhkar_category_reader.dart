@@ -343,6 +343,7 @@ class _DhikrSlide extends StatelessWidget {
                       item.arabic,
                       textAlign: TextAlign.center,
                       textDirection: TextDirection.rtl,
+                      textScaler: TextScaler.noScaling,
                       style: AppTextStyles.arabicBody(
                         fontSize: arabicFontSize + 4,
                       ).copyWith(

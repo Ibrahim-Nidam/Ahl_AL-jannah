@@ -47,7 +47,7 @@ class QuranLandscapeReader extends StatefulWidget {
     required this.bookmarkedAyahKeys,
     required this.onAyahTapped,
     required this.onPositionChanged,
-    this.fontFamily = 'Lateef',
+    this.fontFamily = 'UthmanicWarsh',
     this.fontFamilyFallback = const [
       'Noto Naskh Arabic',
       'Scheherazade New',
@@ -250,6 +250,7 @@ class _QuranLandscapeReaderState extends State<QuranLandscapeReader> {
           ),
           textDirection: TextDirection.rtl,
           textAlign: TextAlign.justify,
+          textScaler: TextScaler.noScaling,
           locale: const Locale('ar'),
         ),
       ),

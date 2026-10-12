@@ -322,6 +322,66 @@ abstract class AppLocalizations {
   /// **'Uthmanic Warsh (V21)'**
   String get quranFontUthmanicWarshName;
 
+  /// No description provided for @appFontSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App Font'**
+  String get appFontSectionTitle;
+
+  /// No description provided for @appFontSectionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the UI font (Hafs or Warsh). Does not affect the Quran reader text font.'**
+  String get appFontSectionDescription;
+
+  /// No description provided for @appFontHafsOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Uthmanic Hafs (Default)'**
+  String get appFontHafsOption;
+
+  /// No description provided for @appFontWarshOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Uthmanic Warsh'**
+  String get appFontWarshOption;
+
+  /// No description provided for @appFontSizeSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App Font Size'**
+  String get appFontSizeSectionTitle;
+
+  /// No description provided for @appFontSizeSectionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Change the size of all application fonts except Quran, Hadith, and Adhkar.'**
+  String get appFontSizeSectionDescription;
+
+  /// No description provided for @appFontSizeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'App Font Size: {size}%'**
+  String appFontSizeLabel(int size);
+
+  /// No description provided for @hadithSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hadith Font Settings'**
+  String get hadithSettingsTitle;
+
+  /// No description provided for @adhkarSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Adhkar Font Settings'**
+  String get adhkarSettingsTitle;
+
+  /// No description provided for @contentFontSizeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Font Size: {size} px'**
+  String contentFontSizeLabel(int size);
+
   /// No description provided for @quranRiwayaSectionTitle.
   ///
   /// In en, this message translates to:

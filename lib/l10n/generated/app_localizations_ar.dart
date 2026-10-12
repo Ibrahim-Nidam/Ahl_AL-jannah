@@ -126,6 +126,42 @@ class AppLocalizationsAr extends AppLocalizations {
   String get quranFontUthmanicWarshName => 'عثماني ورش (٢١)';
 
   @override
+  String get appFontSectionTitle => 'خط التطبيق';
+
+  @override
+  String get appFontSectionDescription =>
+      'اختر خط العربية المستخدم لواجهة التطبيق (حفص أو ورش). لا يتأثر خط المصحف الشريف بهذا الخيار.';
+
+  @override
+  String get appFontHafsOption => 'عثماني حفص (افتراضي)';
+
+  @override
+  String get appFontWarshOption => 'عثماني ورش';
+
+  @override
+  String get appFontSizeSectionTitle => 'حجم خط التطبيق';
+
+  @override
+  String get appFontSizeSectionDescription =>
+      'تغيير حجم جميع نصوص الواجهة ما عدا القرآن والحديث والأذكار. تبقى العناوين أكبر تناسبيًا.';
+
+  @override
+  String appFontSizeLabel(int size) {
+    return 'حجم خط التطبيق: $size%';
+  }
+
+  @override
+  String get hadithSettingsTitle => 'إعدادات خط الحديث';
+
+  @override
+  String get adhkarSettingsTitle => 'إعدادات خط الأذكار';
+
+  @override
+  String contentFontSizeLabel(int size) {
+    return 'حجم الخط: $size بكسل';
+  }
+
+  @override
   String get quranRiwayaSectionTitle => 'رواية القرآن';
 
   @override

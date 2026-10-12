@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/widgets/arabic_font_size_slider.dart';
 import '../bloc/hadith_cubit.dart';
 import '../widgets/hadith_author_tile.dart';
 import '../widgets/hadith_search_field.dart';
@@ -64,7 +65,19 @@ class _HadithPageState extends State<HadithPage> {
     return BlocProvider.value(
       value: _cubit,
       child: Scaffold(
-        appBar: AppBar(title: Text(l10n.hadithPageTitle)),
+        appBar: AppBar(
+          title: Text(l10n.hadithPageTitle),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.format_size_rounded),
+              tooltip: l10n.hadithSettingsTitle,
+              onPressed: () => showArabicFontSizeBottomSheet(
+                context,
+                title: l10n.hadithSettingsTitle,
+              ),
+            ),
+          ],
+        ),
         body: BlocBuilder<HadithCubit, HadithState>(
           builder: (context, state) {
             if (state is HadithLoading || state is HadithInitial) {

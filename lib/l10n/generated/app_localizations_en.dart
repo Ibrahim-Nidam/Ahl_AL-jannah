@@ -127,6 +127,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quranFontUthmanicWarshName => 'Uthmanic Warsh (V21)';
 
   @override
+  String get appFontSectionTitle => 'App Font';
+
+  @override
+  String get appFontSectionDescription =>
+      'Choose the UI font (Hafs or Warsh). Does not affect the Quran reader text font.';
+
+  @override
+  String get appFontHafsOption => 'Uthmanic Hafs (Default)';
+
+  @override
+  String get appFontWarshOption => 'Uthmanic Warsh';
+
+  @override
+  String get appFontSizeSectionTitle => 'App Font Size';
+
+  @override
+  String get appFontSizeSectionDescription =>
+      'Change the size of all application fonts except Quran, Hadith, and Adhkar.';
+
+  @override
+  String appFontSizeLabel(int size) {
+    return 'App Font Size: $size%';
+  }
+
+  @override
+  String get hadithSettingsTitle => 'Hadith Font Settings';
+
+  @override
+  String get adhkarSettingsTitle => 'Adhkar Font Settings';
+
+  @override
+  String contentFontSizeLabel(int size) {
+    return 'Font Size: $size px';
+  }
+
+  @override
   String get quranRiwayaSectionTitle => 'Quran Recitation';
 
   @override

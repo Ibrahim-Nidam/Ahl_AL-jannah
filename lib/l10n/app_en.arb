@@ -48,6 +48,26 @@
   "quranFontUthmanicName": "Uthmanic (Lateef)",
   "quranFontUthmanicHafsName": "Uthmanic Hafs (V22)",
   "quranFontUthmanicWarshName": "Uthmanic Warsh (V21)",
+  "appFontSectionTitle": "App Font",
+  "appFontSectionDescription": "Choose the UI font (Hafs or Warsh). Does not affect the Quran reader text font.",
+  "appFontHafsOption": "Uthmanic Hafs (Default)",
+  "appFontWarshOption": "Uthmanic Warsh",
+  "appFontSizeSectionTitle": "App Font Size",
+  "appFontSizeSectionDescription": "Change the size of all application fonts except Quran, Hadith, and Adhkar.",
+  "appFontSizeLabel": "App Font Size: {size}%",
+  "@appFontSizeLabel": {
+    "placeholders": {
+      "size": { "type": "int" }
+    }
+  },
+  "hadithSettingsTitle": "Hadith Font Settings",
+  "adhkarSettingsTitle": "Adhkar Font Settings",
+  "contentFontSizeLabel": "Font Size: {size} px",
+  "@contentFontSizeLabel": {
+    "placeholders": {
+      "size": { "type": "int" }
+    }
+  },
   "quranRiwayaSectionTitle": "Quran Recitation",
   "quranRiwayaSectionDescription": "Choose which recitation (riwaya) the Quran reader uses. Warsh uses its own Uthmani text and font.",
   "quranRiwayaHafsName": "Hafs 'an Asim",
