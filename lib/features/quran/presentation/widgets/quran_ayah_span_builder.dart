@@ -35,7 +35,9 @@ abstract final class QuranAyahSpanBuilder {
     final cleaned = warsh
         ? text.replaceAll(RegExp('[\u06E0\u200F\u200E\u200B]'), '')
         : text.replaceAll(_unnaturalMarksRe, '');
-    return warsh ? cleaned : cleaned.replaceAll(RegExp(r'\u0640(?=\u0670|\u06E7)'), '');
+    return warsh
+        ? cleaned
+        : cleaned.replaceAll(RegExp(r'\u0640(?=\u0670|\u06E7)'), '');
   }
 
   /// The Bismillah base consonants (no diacritics) to match against.

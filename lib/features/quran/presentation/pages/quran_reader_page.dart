@@ -562,11 +562,10 @@ class _QuranReaderPageState extends State<QuranReaderPage>
     final ayah = _selectedAyah;
     if (ayah == null) return;
     final l10n = AppLocalizations.of(context);
-    final textToCopy =
-        QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(
-          ayah.textAr,
-          warsh: _isWarsh,
-        );
+    final textToCopy = QuranAyahSpanBuilder.stripUnnaturalTajweedMarks(
+      ayah.textAr,
+      warsh: _isWarsh,
+    );
     Clipboard.setData(ClipboardData(text: textToCopy));
     _showCustomToast(l10n.quranVerseCopied);
     setState(() => _selectedAyah = null);

@@ -77,6 +77,7 @@ class QuranMushafPageView extends StatefulWidget {
 
 class _QuranMushafPageViewState extends State<QuranMushafPageView> {
   final QuranCubit _cubit = getIt<QuranCubit>();
+  static Map<int, int>? _cachedWarshAyahCounts;
   List<AyahEntity> _ayahs = [];
   bool _isLoading = true;
   String? _error;
@@ -120,6 +121,9 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
       final loaded = widget.warsh
           ? await _cubit.getWarshAyahsByPage(widget.pageNumber)
           : await _cubit.getAyahsByPage(widget.pageNumber);
+      if (widget.warsh && _cachedWarshAyahCounts == null) {
+        _cachedWarshAyahCounts = await _cubit.getWarshSurahAyahCounts();
+      }
       debugPrint(
         '[MushafPage ${widget.pageNumber}] got ${loaded.length} ayahs',
       );
@@ -191,6 +195,38 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
         nameEn: l10n.quranSurahFallback(surahId),
         revelation: '',
         ayahCount: 0,
+      ),
+    );
+  }
+
+  int _getSurahAyahCount(int surahId) {
+    if (widget.warsh &&
+        _cachedWarshAyahCounts != null &&
+        _cachedWarshAyahCounts!.containsKey(surahId)) {
+      return _cachedWarshAyahCounts![surahId]!;
+    }
+    return _getSurahEntity(surahId).ayahCount;
+  }
+
+  Widget _buildSurahSeparator(bool isDark, Color accent) {
+    final dividerColor = isDark
+        ? AppColors.dividerDark.withAlpha(150)
+        : AppColors.divider.withAlpha(150);
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 16),
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: dividerColor, thickness: 1)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Icon(
+              Icons.star_rounded,
+              size: 16,
+              color: accent.withAlpha(180),
+            ),
+          ),
+          Expanded(child: Divider(color: dividerColor, thickness: 1)),
+        ],
       ),
     );
   }
@@ -310,7 +346,13 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
             ? surahEntity.nameAr
             : surahEntity.nameEn;
 
-        return GestureDetector(
+        final isNewSurah = ayah.number == 1;
+        final surahAyahCount = _getSurahAyahCount(ayah.surahId);
+        final isLastAyahOfSurah =
+            surahAyahCount > 0 && ayah.number == surahAyahCount;
+        final isEndOfPage = index == _ayahs.length - 1;
+
+        final card = GestureDetector(
           onLongPress: () => widget.onAyahTapped(ayah),
           child: Container(
             key: key,
@@ -405,6 +447,40 @@ class _QuranMushafPageViewState extends State<QuranMushafPageView> {
               ],
             ),
           ),
+        );
+
+        if (!isNewSurah && !(isLastAyahOfSurah && isEndOfPage)) {
+          return card;
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isNewSurah) ...[
+              if (index > 0) ...[
+                _buildSurahSeparator(isDark, accent),
+              ],
+              QuranInlineSurahHeader(
+                surah: surahEntity,
+                accent: accent,
+                fontFamily: widget.fontFamily,
+                fontFamilyFallback: widget.fontFamilyFallback,
+              ),
+              if (ayah.surahId != 9)
+                QuranInlineBismillah(
+                  color: quranTextColor,
+                  fontFamily: widget.fontFamily,
+                  fontFamilyFallback: widget.fontFamilyFallback,
+                  warsh: widget.warsh,
+                ),
+              const SizedBox(height: 8),
+            ],
+            card,
+            if (isLastAyahOfSurah && isEndOfPage) ...[
+              _buildSurahSeparator(isDark, accent),
+            ],
+          ],
         );
       },
     );
